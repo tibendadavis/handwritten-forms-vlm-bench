@@ -1,0 +1,31 @@
+[project]
+name = "formbench"
+version = "0.1.0"
+description = "Benchmark harness for extracting structured data from handwritten forms with vision-language models, with confidence flags for human review."
+readme = "README.md"
+authors = [
+    { name = "Davis", email = "davistibz@gmail.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "langfuse>=3.7.0",
+    "openai>=2.48.0",
+    "pillow>=11.3.0",
+    "psutil>=7.2.2",
+    "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+formbench = "formbench:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.17.2",
+]
