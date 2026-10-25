@@ -8,7 +8,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --dev
       - run: uv run ruff check .
-      - run: uv run pytest -q          
+      - run: uv run pytest -q
   secrets:
     runs-on: ubuntu-latest
     steps:
