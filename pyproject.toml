@@ -29,3 +29,16 @@ dev = [
     "pytest>=8.4.2",
     "ruff>=0.17.2",
 ]
+
+[tool.ruff]
+line-length = 100
+
+
+[tool.ruff.lint]
+ignore = ["E501"]
+select = [
+  "E", "F",   # errors and undefined names (ruff's defaults)
+  "I",        # import sorting (I001)
+  "SIM",      # simplifications (SIM115)
+  "B",        # likely bugs, e.g. mutable default arguments
+]
