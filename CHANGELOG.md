@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Pre-commit hooks: gitleaks secret scanning, ruff lint and format
 - GitHub Actions CI: lint, tests, secrets scan on every push
 - Smoke test: single traced VLM call via Ollama's OpenAI-compatible API, recorded in self-hosted Langfuse
+- `smoke` console script (`uv run smoke IMAGE MODEL`); `.env` is loaded automatically via python-dotenv
 
 ### Fixed
 - `.env.example` uses `LANGFUSE_HOST`, the variable the installed Langfuse SDK reads
