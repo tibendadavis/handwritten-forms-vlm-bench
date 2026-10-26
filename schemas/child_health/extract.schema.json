@@ -1,0 +1,1018 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Child Health",
+  "type": "object",
+  "properties": {
+    "period": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Date or period written on the form, exactly as written"
+    },
+    "org_unit_name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Facility name exactly as handwritten"
+    },
+    "bcg_doses_given__fixed_lt_1y": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "BCG doses given (Fixed, <1y)"
+    },
+    "bcg_doses_given__fixed_gt_1y": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "BCG doses given (Fixed, >1y)"
+    },
+    "bcg_doses_given__outreach_lt_1y": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "BCG doses given (Outreach, <1y)"
+    },
+    "bcg_doses_given__outreach_gt_1y": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "BCG doses given (Outreach, >1y)"
+    },
+    "fully_immunized_child__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Fully Immunized child (Fixed, <1y)"
+    },
+    "fully_immunized_child__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Fully Immunized child (Fixed, >1y)"
+    },
+    "fully_immunized_child__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Fully Immunized child (Outreach, <1y)"
+    },
+    "fully_immunized_child__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Fully Immunized child (Outreach, >1y)"
+    },
+    "llitn_given_at_penta3__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "LLITN given at Penta3 (Fixed, <1y)"
+    },
+    "llitn_given_at_penta3__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "LLITN given at Penta3 (Fixed, >1y)"
+    },
+    "llitn_given_at_penta3__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "LLITN given at Penta3 (Outreach, <1y)"
+    },
+    "llitn_given_at_penta3__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "LLITN given at Penta3 (Outreach, >1y)"
+    },
+    "opv0_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV0 doses given (Fixed, <1y)"
+    },
+    "opv0_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV0 doses given (Fixed, >1y)"
+    },
+    "opv0_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV0 doses given (Outreach, <1y)"
+    },
+    "opv0_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV0 doses given (Outreach, >1y)"
+    },
+    "opv1_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV1 doses given (Fixed, <1y)"
+    },
+    "opv1_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV1 doses given (Fixed, >1y)"
+    },
+    "opv1_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV1 doses given (Outreach, <1y)"
+    },
+    "opv1_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV1 doses given (Outreach, >1y)"
+    },
+    "opv2_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV2 doses given (Fixed, <1y)"
+    },
+    "opv2_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV2 doses given (Fixed, >1y)"
+    },
+    "opv2_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV2 doses given (Outreach, <1y)"
+    },
+    "opv2_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV2 doses given (Outreach, >1y)"
+    },
+    "opv3_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV3 doses given (Fixed, <1y)"
+    },
+    "opv3_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV3 doses given (Fixed, >1y)"
+    },
+    "opv3_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV3 doses given (Outreach, <1y)"
+    },
+    "opv3_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "OPV3 doses given (Outreach, >1y)"
+    },
+    "pcv1_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV1 doses given (Fixed, <1y)"
+    },
+    "pcv1_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV1 doses given (Fixed, >1y)"
+    },
+    "pcv1_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV1 doses given (Outreach, <1y)"
+    },
+    "pcv1_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV1 doses given (Outreach, >1y)"
+    },
+    "pcv2_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV2 doses given (Fixed, <1y)"
+    },
+    "pcv2_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV2 doses given (Fixed, >1y)"
+    },
+    "pcv2_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV2 doses given (Outreach, <1y)"
+    },
+    "pcv2_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV2 doses given (Outreach, >1y)"
+    },
+    "pcv3_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV3 doses given (Fixed, <1y)"
+    },
+    "pcv3_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV3 doses given (Fixed, >1y)"
+    },
+    "pcv3_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV3 doses given (Outreach, <1y)"
+    },
+    "pcv3_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "PCV3 doses given (Outreach, >1y)"
+    },
+    "penta1_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta1 doses given (Fixed, <1y)"
+    },
+    "penta1_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta1 doses given (Fixed, >1y)"
+    },
+    "penta1_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta1 doses given (Outreach, <1y)"
+    },
+    "penta1_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta1 doses given (Outreach, >1y)"
+    },
+    "penta2_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta2 doses given (Fixed, <1y)"
+    },
+    "penta2_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta2 doses given (Fixed, >1y)"
+    },
+    "penta2_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta2 doses given (Outreach, <1y)"
+    },
+    "penta2_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta2 doses given (Outreach, >1y)"
+    },
+    "penta3_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta3 doses given (Fixed, <1y)"
+    },
+    "penta3_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta3 doses given (Fixed, >1y)"
+    },
+    "penta3_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta3 doses given (Outreach, <1y)"
+    },
+    "penta3_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Penta3 doses given (Outreach, >1y)"
+    },
+    "yellow_fever_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Yellow Fever doses given (Fixed, <1y)"
+    },
+    "yellow_fever_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Yellow Fever doses given (Fixed, >1y)"
+    },
+    "yellow_fever_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Yellow Fever doses given (Outreach, <1y)"
+    },
+    "yellow_fever_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Yellow Fever doses given (Outreach, >1y)"
+    },
+    "measles_doses_given__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Measles doses given (Fixed, <1y)"
+    },
+    "measles_doses_given__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Measles doses given (Fixed, >1y)"
+    },
+    "measles_doses_given__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Measles doses given (Outreach, <1y)"
+    },
+    "measles_doses_given__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Measles doses given (Outreach, >1y)"
+    },
+    "children_getting_therapeutic_feeding__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children getting therapeutic feeding (Fixed, <1y)"
+    },
+    "children_getting_therapeutic_feeding__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children getting therapeutic feeding (Fixed, >1y)"
+    },
+    "children_getting_therapeutic_feeding__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children getting therapeutic feeding (Outreach, <1y)"
+    },
+    "children_getting_therapeutic_feeding__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children getting therapeutic feeding (Outreach, >1y)"
+    },
+    "children_supplied_with_food_supplemements__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children supplied with food supplemements (Fixed, <1y)"
+    },
+    "children_supplied_with_food_supplemements__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children supplied with food supplemements (Fixed, >1y)"
+    },
+    "children_supplied_with_food_supplemements__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children supplied with food supplemements (Outreach, <1y)"
+    },
+    "children_supplied_with_food_supplemements__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Children supplied with food supplemements (Outreach, >1y)"
+    },
+    "mebendazole_albendazole_for_children_12_59_months__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Mebendazole/Albendazole (for children 12-59 months) (Fixed, <1y)"
+    },
+    "mebendazole_albendazole_for_children_12_59_months__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Mebendazole/Albendazole (for children 12-59 months) (Fixed, >1y)"
+    },
+    "mebendazole_albendazole_for_children_12_59_months__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Mebendazole/Albendazole (for children 12-59 months) (Outreach, <1y)"
+    },
+    "mebendazole_albendazole_for_children_12_59_months__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Mebendazole/Albendazole (for children 12-59 months) (Outreach, >1y)"
+    },
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Newborn protected at birth against tetanus (TT2+) (Fixed, <1y)"
+    },
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Newborn protected at birth against tetanus (TT2+) (Fixed, >1y)"
+    },
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Newborn protected at birth against tetanus (TT2+) (Outreach, <1y)"
+    },
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Newborn protected at birth against tetanus (TT2+) (Outreach, >1y)"
+    },
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Early breastfeeding (within 1 hr after delivery) at BCG (Fixed, <1y)"
+    },
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Early breastfeeding (within 1 hr after delivery) at BCG (Fixed, >1y)"
+    },
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Early breastfeeding (within 1 hr after delivery) at BCG (Outreach, <1y)"
+    },
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Early breastfeeding (within 1 hr after delivery) at BCG (Outreach, >1y)"
+    },
+    "q_exclusive_breastfeeding_at_time_of_penta_3__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Exclusive breastfeeding at time of Penta 3 (Fixed, <1y)"
+    },
+    "q_exclusive_breastfeeding_at_time_of_penta_3__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Exclusive breastfeeding at time of Penta 3 (Fixed, >1y)"
+    },
+    "q_exclusive_breastfeeding_at_time_of_penta_3__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Exclusive breastfeeding at time of Penta 3 (Outreach, <1y)"
+    },
+    "q_exclusive_breastfeeding_at_time_of_penta_3__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Exclusive breastfeeding at time of Penta 3 (Outreach, >1y)"
+    },
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_LLITN given at time of 2nd Vit A dose (Fixed, <1y)"
+    },
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_LLITN given at time of 2nd Vit A dose (Fixed, >1y)"
+    },
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_LLITN given at time of 2nd Vit A dose (Outreach, <1y)"
+    },
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_LLITN given at time of 2nd Vit A dose (Outreach, >1y)"
+    },
+    "q_slept_under_llin_last_night_measles__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Slept under LLIN last night Measles (Fixed, <1y)"
+    },
+    "q_slept_under_llin_last_night_measles__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Slept under LLIN last night Measles (Fixed, >1y)"
+    },
+    "q_slept_under_llin_last_night_measles__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Slept under LLIN last night Measles (Outreach, <1y)"
+    },
+    "q_slept_under_llin_last_night_measles__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Slept under LLIN last night Measles (Outreach, >1y)"
+    },
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Vitamin A received 4-6 months ago at 12-59 dose (Fixed, <1y)"
+    },
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Vitamin A received 4-6 months ago at 12-59 dose (Fixed, >1y)"
+    },
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Vitamin A received 4-6 months ago at 12-59 dose (Outreach, <1y)"
+    },
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Q_Vitamin A received 4-6 months ago at 12-59 dose (Outreach, >1y)"
+    },
+    "vitamin_a_given_to_lt_5y__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Vitamin A given to < 5y (Fixed, <1y)"
+    },
+    "vitamin_a_given_to_lt_5y__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Vitamin A given to < 5y (Fixed, >1y)"
+    },
+    "vitamin_a_given_to_lt_5y__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Vitamin A given to < 5y (Outreach, <1y)"
+    },
+    "vitamin_a_given_to_lt_5y__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Vitamin A given to < 5y (Outreach, >1y)"
+    },
+    "weight_for_age_below_lower_line_red__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age below lower line (red) (Fixed, <1y)"
+    },
+    "weight_for_age_below_lower_line_red__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age below lower line (red) (Fixed, >1y)"
+    },
+    "weight_for_age_below_lower_line_red__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age below lower line (red) (Outreach, <1y)"
+    },
+    "weight_for_age_below_lower_line_red__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age below lower line (red) (Outreach, >1y)"
+    },
+    "weight_for_age_between_middle_and_lower_line_yellow__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age between middle and lower line (yellow) (Fixed, <1y)"
+    },
+    "weight_for_age_between_middle_and_lower_line_yellow__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age between middle and lower line (yellow) (Fixed, >1y)"
+    },
+    "weight_for_age_between_middle_and_lower_line_yellow__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age between middle and lower line (yellow) (Outreach, <1y)"
+    },
+    "weight_for_age_between_middle_and_lower_line_yellow__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age between middle and lower line (yellow) (Outreach, >1y)"
+    },
+    "weight_for_age_on_or_above_middle_line_green__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age on or above middle line (green) (Fixed, <1y)"
+    },
+    "weight_for_age_on_or_above_middle_line_green__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age on or above middle line (green) (Fixed, >1y)"
+    },
+    "weight_for_age_on_or_above_middle_line_green__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age on or above middle line (green) (Outreach, <1y)"
+    },
+    "weight_for_age_on_or_above_middle_line_green__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for age on or above middle line (green) (Outreach, >1y)"
+    },
+    "weight_for_height_70_79_percent__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 70-79 percent (Fixed, <1y)"
+    },
+    "weight_for_height_70_79_percent__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 70-79 percent (Fixed, >1y)"
+    },
+    "weight_for_height_70_79_percent__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 70-79 percent (Outreach, <1y)"
+    },
+    "weight_for_height_70_79_percent__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 70-79 percent (Outreach, >1y)"
+    },
+    "weight_for_height_80_percent_and_above__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 80 percent and above (Fixed, <1y)"
+    },
+    "weight_for_height_80_percent_and_above__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 80 percent and above (Fixed, >1y)"
+    },
+    "weight_for_height_80_percent_and_above__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 80 percent and above (Outreach, <1y)"
+    },
+    "weight_for_height_80_percent_and_above__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height 80 percent and above (Outreach, >1y)"
+    },
+    "weight_for_height_below_70_percent__fixed_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height below 70 percent (Fixed, <1y)"
+    },
+    "weight_for_height_below_70_percent__fixed_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height below 70 percent (Fixed, >1y)"
+    },
+    "weight_for_height_below_70_percent__outreach_lt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height below 70 percent (Outreach, <1y)"
+    },
+    "weight_for_height_below_70_percent__outreach_gt_1y": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Weight for height below 70 percent (Outreach, >1y)"
+    }
+  },
+  "required": [
+    "period",
+    "org_unit_name",
+    "bcg_doses_given__fixed_lt_1y",
+    "bcg_doses_given__fixed_gt_1y",
+    "bcg_doses_given__outreach_lt_1y",
+    "bcg_doses_given__outreach_gt_1y",
+    "fully_immunized_child__fixed_lt_1y",
+    "fully_immunized_child__fixed_gt_1y",
+    "fully_immunized_child__outreach_lt_1y",
+    "fully_immunized_child__outreach_gt_1y",
+    "llitn_given_at_penta3__fixed_lt_1y",
+    "llitn_given_at_penta3__fixed_gt_1y",
+    "llitn_given_at_penta3__outreach_lt_1y",
+    "llitn_given_at_penta3__outreach_gt_1y",
+    "opv0_doses_given__fixed_lt_1y",
+    "opv0_doses_given__fixed_gt_1y",
+    "opv0_doses_given__outreach_lt_1y",
+    "opv0_doses_given__outreach_gt_1y",
+    "opv1_doses_given__fixed_lt_1y",
+    "opv1_doses_given__fixed_gt_1y",
+    "opv1_doses_given__outreach_lt_1y",
+    "opv1_doses_given__outreach_gt_1y",
+    "opv2_doses_given__fixed_lt_1y",
+    "opv2_doses_given__fixed_gt_1y",
+    "opv2_doses_given__outreach_lt_1y",
+    "opv2_doses_given__outreach_gt_1y",
+    "opv3_doses_given__fixed_lt_1y",
+    "opv3_doses_given__fixed_gt_1y",
+    "opv3_doses_given__outreach_lt_1y",
+    "opv3_doses_given__outreach_gt_1y",
+    "pcv1_doses_given__fixed_lt_1y",
+    "pcv1_doses_given__fixed_gt_1y",
+    "pcv1_doses_given__outreach_lt_1y",
+    "pcv1_doses_given__outreach_gt_1y",
+    "pcv2_doses_given__fixed_lt_1y",
+    "pcv2_doses_given__fixed_gt_1y",
+    "pcv2_doses_given__outreach_lt_1y",
+    "pcv2_doses_given__outreach_gt_1y",
+    "pcv3_doses_given__fixed_lt_1y",
+    "pcv3_doses_given__fixed_gt_1y",
+    "pcv3_doses_given__outreach_lt_1y",
+    "pcv3_doses_given__outreach_gt_1y",
+    "penta1_doses_given__fixed_lt_1y",
+    "penta1_doses_given__fixed_gt_1y",
+    "penta1_doses_given__outreach_lt_1y",
+    "penta1_doses_given__outreach_gt_1y",
+    "penta2_doses_given__fixed_lt_1y",
+    "penta2_doses_given__fixed_gt_1y",
+    "penta2_doses_given__outreach_lt_1y",
+    "penta2_doses_given__outreach_gt_1y",
+    "penta3_doses_given__fixed_lt_1y",
+    "penta3_doses_given__fixed_gt_1y",
+    "penta3_doses_given__outreach_lt_1y",
+    "penta3_doses_given__outreach_gt_1y",
+    "yellow_fever_doses_given__fixed_lt_1y",
+    "yellow_fever_doses_given__fixed_gt_1y",
+    "yellow_fever_doses_given__outreach_lt_1y",
+    "yellow_fever_doses_given__outreach_gt_1y",
+    "measles_doses_given__fixed_lt_1y",
+    "measles_doses_given__fixed_gt_1y",
+    "measles_doses_given__outreach_lt_1y",
+    "measles_doses_given__outreach_gt_1y",
+    "children_getting_therapeutic_feeding__fixed_lt_1y",
+    "children_getting_therapeutic_feeding__fixed_gt_1y",
+    "children_getting_therapeutic_feeding__outreach_lt_1y",
+    "children_getting_therapeutic_feeding__outreach_gt_1y",
+    "children_supplied_with_food_supplemements__fixed_lt_1y",
+    "children_supplied_with_food_supplemements__fixed_gt_1y",
+    "children_supplied_with_food_supplemements__outreach_lt_1y",
+    "children_supplied_with_food_supplemements__outreach_gt_1y",
+    "mebendazole_albendazole_for_children_12_59_months__fixed_lt_1y",
+    "mebendazole_albendazole_for_children_12_59_months__fixed_gt_1y",
+    "mebendazole_albendazole_for_children_12_59_months__outreach_lt_1y",
+    "mebendazole_albendazole_for_children_12_59_months__outreach_gt_1y",
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__fixed_lt_1y",
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__fixed_gt_1y",
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__outreach_lt_1y",
+    "newborn_protected_at_birth_against_tetanus_tt2_plus__outreach_gt_1y",
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__fixed_lt_1y",
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__fixed_gt_1y",
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__outreach_lt_1y",
+    "q_early_breastfeeding_within_1_hr_after_delivery_at_bcg__outreach_gt_1y",
+    "q_exclusive_breastfeeding_at_time_of_penta_3__fixed_lt_1y",
+    "q_exclusive_breastfeeding_at_time_of_penta_3__fixed_gt_1y",
+    "q_exclusive_breastfeeding_at_time_of_penta_3__outreach_lt_1y",
+    "q_exclusive_breastfeeding_at_time_of_penta_3__outreach_gt_1y",
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__fixed_lt_1y",
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__fixed_gt_1y",
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__outreach_lt_1y",
+    "q_llitn_given_at_time_of_2nd_vit_a_dose__outreach_gt_1y",
+    "q_slept_under_llin_last_night_measles__fixed_lt_1y",
+    "q_slept_under_llin_last_night_measles__fixed_gt_1y",
+    "q_slept_under_llin_last_night_measles__outreach_lt_1y",
+    "q_slept_under_llin_last_night_measles__outreach_gt_1y",
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__fixed_lt_1y",
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__fixed_gt_1y",
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__outreach_lt_1y",
+    "q_vitamin_a_received_4_6_months_ago_at_12_59_dose__outreach_gt_1y",
+    "vitamin_a_given_to_lt_5y__fixed_lt_1y",
+    "vitamin_a_given_to_lt_5y__fixed_gt_1y",
+    "vitamin_a_given_to_lt_5y__outreach_lt_1y",
+    "vitamin_a_given_to_lt_5y__outreach_gt_1y",
+    "weight_for_age_below_lower_line_red__fixed_lt_1y",
+    "weight_for_age_below_lower_line_red__fixed_gt_1y",
+    "weight_for_age_below_lower_line_red__outreach_lt_1y",
+    "weight_for_age_below_lower_line_red__outreach_gt_1y",
+    "weight_for_age_between_middle_and_lower_line_yellow__fixed_lt_1y",
+    "weight_for_age_between_middle_and_lower_line_yellow__fixed_gt_1y",
+    "weight_for_age_between_middle_and_lower_line_yellow__outreach_lt_1y",
+    "weight_for_age_between_middle_and_lower_line_yellow__outreach_gt_1y",
+    "weight_for_age_on_or_above_middle_line_green__fixed_lt_1y",
+    "weight_for_age_on_or_above_middle_line_green__fixed_gt_1y",
+    "weight_for_age_on_or_above_middle_line_green__outreach_lt_1y",
+    "weight_for_age_on_or_above_middle_line_green__outreach_gt_1y",
+    "weight_for_height_70_79_percent__fixed_lt_1y",
+    "weight_for_height_70_79_percent__fixed_gt_1y",
+    "weight_for_height_70_79_percent__outreach_lt_1y",
+    "weight_for_height_70_79_percent__outreach_gt_1y",
+    "weight_for_height_80_percent_and_above__fixed_lt_1y",
+    "weight_for_height_80_percent_and_above__fixed_gt_1y",
+    "weight_for_height_80_percent_and_above__outreach_lt_1y",
+    "weight_for_height_80_percent_and_above__outreach_gt_1y",
+    "weight_for_height_below_70_percent__fixed_lt_1y",
+    "weight_for_height_below_70_percent__fixed_gt_1y",
+    "weight_for_height_below_70_percent__outreach_lt_1y",
+    "weight_for_height_below_70_percent__outreach_gt_1y"
+  ],
+  "additionalProperties": false
+}
