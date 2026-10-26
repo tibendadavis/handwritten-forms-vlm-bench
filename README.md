@@ -88,8 +88,10 @@ uv sync
 # 3. Pull a small vision model
 ollama pull qwen2.5vl:3b
 # 4. Smoke test: one image, one traced call
-uv run --env-file .env python src/formbench/smoke.py data/synthetic/samples/sample-01.jpg qwen2.5vl:3b
+uv run smoke data/synthetic/samples/sample-01.jpg qwen2.5vl:3b
 ```
+
+Scripts load `.env` from the current directory automatically. Run `uv run smoke --help` for usage.
 
 Full benchmark commands will be added in v0.2.
 
