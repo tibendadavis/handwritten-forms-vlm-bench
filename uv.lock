@@ -302,6 +302,7 @@ name = "formbench"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "langfuse", version = "3.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "langfuse", version = "4.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "langfuse", version = "5.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -328,6 +329,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langfuse", specifier = ">=3.7.0" },
     { name = "openai", specifier = ">=2.48.0" },
     { name = "pillow", specifier = ">=11.3.0" },
