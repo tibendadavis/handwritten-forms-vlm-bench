@@ -1,0 +1,1025 @@
+{
+  "name": "Child Health",
+  "periodType": "Monthly",
+  "dataSetElements": [
+    {
+      "dataElement": {
+        "name": "OPV3 doses given",
+        "valueType": "NUMBER",
+        "id": "vI2csg55S9C",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for age between middle and lower line (yellow)",
+        "valueType": "NUMBER",
+        "id": "ldGXl6SEdqf",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "LLITN given at Penta3",
+        "valueType": "NUMBER",
+        "id": "z7duEFcpApd",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Penta1 doses given",
+        "valueType": "NUMBER",
+        "id": "fClA2Erf6IO",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Newborn protected at birth against tetanus (TT2+)",
+        "valueType": "NUMBER",
+        "id": "DUSpd8Jq3M7",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for height 80 percent and above",
+        "valueType": "NUMBER",
+        "id": "qPVDd87kS9Z",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "BCG doses given",
+        "valueType": "INTEGER",
+        "id": "s46m5MS0hxu",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Children getting therapeutic feeding",
+        "valueType": "NUMBER",
+        "id": "qw2sIef52Fu",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for age on or above middle line (green)",
+        "valueType": "NUMBER",
+        "id": "NLnXLV5YpZF",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for age below lower line (red)",
+        "valueType": "NUMBER",
+        "id": "bTcRDVjC66S",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "PCV3 doses given",
+        "valueType": "NUMBER",
+        "id": "L2kxa2IA2cs",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Fully Immunized child",
+        "valueType": "NUMBER",
+        "id": "UOlfIjgN8X6",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "PCV2 doses given",
+        "valueType": "NUMBER",
+        "id": "mGN1az8Xub6",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Penta2 doses given",
+        "valueType": "NUMBER",
+        "id": "I78gJm4KBo7",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Q_LLITN given at time of 2nd Vit A dose",
+        "valueType": "NUMBER",
+        "id": "Rmixc9wJl0G",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Q_Slept under LLIN last night Measles",
+        "valueType": "NUMBER",
+        "id": "GCGfEY82Wz6",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Measles doses given",
+        "valueType": "NUMBER",
+        "id": "YtbsuPPo010",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Q_Vitamin A received 4-6 months ago at 12-59 dose",
+        "valueType": "NUMBER",
+        "id": "ca8lfO062zg",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Mebendazole/Albendazole (for children 12-59 months)",
+        "valueType": "NUMBER",
+        "id": "d5xTg3WR3DP",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for height 70-79 percent",
+        "valueType": "NUMBER",
+        "id": "pnL2VG8Bn7N",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Q_Early breastfeeding (within 1 hr after delivery) at BCG",
+        "valueType": "NUMBER",
+        "id": "dU0GquGkGQr",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "OPV0 doses given",
+        "valueType": "NUMBER",
+        "id": "x3Do5e7g4Qo",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Penta3 doses given",
+        "valueType": "NUMBER",
+        "id": "n6aMJNLdvep",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "OPV1 doses given",
+        "valueType": "NUMBER",
+        "id": "pikOziyCXbM",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "PCV1 doses given",
+        "valueType": "NUMBER",
+        "id": "xc8gmAKfO95",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Q_Exclusive breastfeeding at time of Penta 3",
+        "valueType": "NUMBER",
+        "id": "pEOVd4Z3TAS",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Weight for height below 70 percent",
+        "valueType": "NUMBER",
+        "id": "lVsbKXoF0zX",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "OPV2 doses given",
+        "valueType": "NUMBER",
+        "id": "O05mAByOgAv",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Vitamin A given to < 5y",
+        "valueType": "NUMBER",
+        "id": "tU7GixyHhsv",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Yellow Fever doses given",
+        "valueType": "NUMBER",
+        "id": "l6byfWFUGaP",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "dataElement": {
+        "name": "Children supplied with food supplemements",
+        "valueType": "NUMBER",
+        "id": "Y53Jcc9LBYh",
+        "categoryCombo": {
+          "name": "Location and age group",
+          "id": "dzjKKQq0cSO",
+          "categoryOptionCombos": [
+            {
+              "name": "Outreach, <1y",
+              "id": "V6L425pT3A0"
+            },
+            {
+              "name": "Outreach, >1y",
+              "id": "hEFKSsPV5et"
+            },
+            {
+              "name": "Fixed, <1y",
+              "id": "Prlt0C1RF0s"
+            },
+            {
+              "name": "Fixed, >1y",
+              "id": "psbwp3CQEhs"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "sections": [
+    {
+      "name": "Immunization",
+      "dataElements": [
+        {
+          "id": "s46m5MS0hxu"
+        },
+        {
+          "id": "UOlfIjgN8X6"
+        },
+        {
+          "id": "z7duEFcpApd"
+        },
+        {
+          "id": "x3Do5e7g4Qo"
+        },
+        {
+          "id": "pikOziyCXbM"
+        },
+        {
+          "id": "O05mAByOgAv"
+        },
+        {
+          "id": "vI2csg55S9C"
+        },
+        {
+          "id": "xc8gmAKfO95"
+        },
+        {
+          "id": "mGN1az8Xub6"
+        },
+        {
+          "id": "L2kxa2IA2cs"
+        },
+        {
+          "id": "fClA2Erf6IO"
+        },
+        {
+          "id": "I78gJm4KBo7"
+        },
+        {
+          "id": "n6aMJNLdvep"
+        },
+        {
+          "id": "l6byfWFUGaP"
+        },
+        {
+          "id": "YtbsuPPo010"
+        }
+      ],
+      "sortOrder": 2,
+      "id": "Y2rk0vzgvAx"
+    },
+    {
+      "name": "Nutrition",
+      "dataElements": [
+        {
+          "id": "qw2sIef52Fu"
+        },
+        {
+          "id": "Y53Jcc9LBYh"
+        },
+        {
+          "id": "d5xTg3WR3DP"
+        },
+        {
+          "id": "DUSpd8Jq3M7"
+        },
+        {
+          "id": "dU0GquGkGQr"
+        },
+        {
+          "id": "pEOVd4Z3TAS"
+        },
+        {
+          "id": "Rmixc9wJl0G"
+        },
+        {
+          "id": "GCGfEY82Wz6"
+        },
+        {
+          "id": "ca8lfO062zg"
+        },
+        {
+          "id": "tU7GixyHhsv"
+        },
+        {
+          "id": "bTcRDVjC66S"
+        },
+        {
+          "id": "ldGXl6SEdqf"
+        },
+        {
+          "id": "NLnXLV5YpZF"
+        },
+        {
+          "id": "pnL2VG8Bn7N"
+        },
+        {
+          "id": "qPVDd87kS9Z"
+        },
+        {
+          "id": "lVsbKXoF0zX"
+        }
+      ],
+      "sortOrder": 3,
+      "id": "vtOr8PTJVxS"
+    }
+  ],
+  "categoryCombo": {
+    "name": "default",
+    "id": "bjDvmb4bfuf",
+    "categoryOptionCombos": [
+      {
+        "name": "default",
+        "id": "HllvX50cXC0"
+      }
+    ]
+  },
+  "id": "BfMAe6Itzgt"
+}
