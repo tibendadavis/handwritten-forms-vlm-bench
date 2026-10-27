@@ -222,3 +222,4 @@ __marimo__/
 .env
 data/private/
 forms/
+results/
