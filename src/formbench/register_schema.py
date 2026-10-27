@@ -5,7 +5,7 @@ from typing import Any
 from formbench.register_spec import DOSE_COLUMNS
 
 # Bump when a register prompt or schema changes so runs stay comparable.
-REGISTER_PROMPT_VERSION = "r1"
+REGISTER_PROMPT_VERSION = "r2"
 
 TEXT = {"type": ["string", "null"]}
 
@@ -87,9 +87,11 @@ def page_prompt() -> str:
 
 def rows_prompt() -> str:
     return (
-        "This is a horizontal strip cut from a handwritten immunisation register: "
-        "the column header on top, then a few child rows. Columns are labelled A to AC. "
-        "Return rows with these keys:\n"
+        "This is a strip cut from a handwritten immunisation register: a few child "
+        "rows under a header. Each column is labelled at the top with the exact JSON key its "
+        "cells belong to (and its register letter); grey gaps separate the columns. Put each "
+        "handwritten value under the key of the column it is written in. Column C holds the "
+        "birth date on top and the age below. Return rows with these keys:\n"
         f"{_columns()}\n\n{_RULES}"
     )
 
