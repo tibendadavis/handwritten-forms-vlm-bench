@@ -95,6 +95,35 @@ Scripts load `.env` from the current directory automatically. Run `uv run smoke 
 
 Full benchmark commands will be added in v0.2.
 
+## Try it
+
+The full loop on one form, from DHIS2 metadata to scored results. Tesseract is needed for the baseline (`brew install tesseract` or `sudo apt-get install tesseract-ocr`).
+
+```bash
+# 1. Schema from a DHIS2 data set (read-only), or regenerate offline from the snapshot
+uv run build-schema --snapshot schemas/child_health/metadata.json
+
+# 2. Printable form + ground truth: 6 seeded data elements, 25% blank cells
+uv run make-form schemas/child_health --seed 7
+#    -> forms/child_health-7/{form.pdf, values_sheet.pdf, truth.json, layout.json, ...}
+
+# 3. Print form.pdf at 100% scale, copy the values from values_sheet.pdf by hand,
+#    then photograph it flat with all four black corner squares in frame.
+#    Keep photos out of git:
+#    data/private/child_health-7.jpg
+
+# 4a. Tesseract template baseline
+uv run extract --form forms/child_health-7 --image data/private/child_health-7.jpg --engine tesseract
+
+# 4b. A vision-language model via Ollama (thinking off; add --think to enable)
+uv run extract --form forms/child_health-7 --image data/private/child_health-7.jpg --engine ollama:qwen3.5:4b
+
+# 5. Compare: each run prints a per-field table and metrics, is saved under
+#    results/runs/, and appears in Langfuse with its scores.
+```
+
+Design notes: [ADR 0002](docs/adr/0002-template-tesseract-baseline.md) (template OCR baseline), [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) (structured output and thinking).
+
 ## Tech
 
 Python · uv · Langfuse · Ollama / llama.cpp · MLX · OpenAI-compatible serving · DHIS2 Web API · GitHub Actions
