@@ -206,10 +206,11 @@ def read_page(
     cohort = _call(cohort_crop(aligned, layout), cohort_schema(), cohort_prompt(), model, think, TILE_MAX_SIDE, "register-cohort")  # fmt: skip
     results = [cohort]
     rows: list[dict[str, Any]] = []
-    for strip, _ in tiles(aligned, layout):
+    for index, (strip, _) in enumerate(tiles(aligned, layout)):
         result = _call(strip, rows_schema(), rows_prompt(), model, think, TILE_MAX_SIDE, "register-rows")  # fmt: skip
         results.append(result)
-        rows.extend(clean_rows(result["values"].get("rows")))
+        # Remember which strip a row was read from, so review can show that exact crop.
+        rows.extend({**r, "_strip": index} for r in clean_rows(result["values"].get("rows")))
     reading = {
         "cohort_month": cohort["values"].get("cohort_month"),
         "cohort_year": cohort["values"].get("cohort_year"),
