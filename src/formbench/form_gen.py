@@ -16,6 +16,7 @@ from formbench.schema_gen import (
     build_fields,
     build_mapping,
 )
+from formbench.truth import draw_values_sheet, make_truth
 
 # A4 at 300 DPI. All layout coordinates are page pixels at this size.
 DPI = 300
@@ -231,6 +232,7 @@ def make_form(
     elements: int = 6,
     section: str | None = None,
     seed: int = 1,
+    blank_ratio: float = 0.25,
     out: Path = Path("forms"),
 ) -> Path:
     metadata = schema_dir / "metadata.json"
@@ -243,6 +245,8 @@ def make_form(
     mapping = build_mapping(ds, fields)
     header_keys = [k for k in HEADER_LABELS if k in schema["properties"]]
     img, layout = draw_form(ds, fields, header_keys)
+    truth = make_truth(schema, mapping, seed, blank_ratio)
+    sheet = draw_values_sheet(truth, mapping, ds["name"])
 
     folder = out / f"{schema_dir.name}-{seed}"
     folder.mkdir(parents=True, exist_ok=True)
@@ -255,6 +259,10 @@ def make_form(
     (folder / "mapping.yaml").write_text(
         yaml.safe_dump(mapping, sort_keys=False, allow_unicode=True)
     )
+    (folder / "truth.json").write_text(json.dumps(truth, indent=2, ensure_ascii=False) + "\n")
+    sheet[0].save(
+        folder / "values_sheet.pdf", "PDF", resolution=DPI, save_all=True, append_images=sheet[1:]
+    )
     return folder
 
 
@@ -264,6 +272,7 @@ def main() -> None:
     parser.add_argument("--elements", type=int, default=6, help="data elements to print")
     parser.add_argument("--section", help="only pick data elements from this section")
     parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--blank-ratio", type=float, default=0.25, help="share of empty cells")
     parser.add_argument("--out", type=Path, default=Path("forms"))
     args = parser.parse_args()
 
@@ -273,9 +282,10 @@ def main() -> None:
             elements=args.elements,
             section=args.section,
             seed=args.seed,
+            blank_ratio=args.blank_ratio,
             out=args.out,
         )
-    except FormError as error:
+    except ValueError as error:
         raise SystemExit(f"make-form: {error}") from None
     print(f"Form written to {folder}/")
 
