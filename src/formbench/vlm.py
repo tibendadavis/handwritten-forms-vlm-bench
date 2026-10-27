@@ -35,13 +35,16 @@ def build_prompt(schema: dict[str, Any]) -> str:
     )
 
 
-def encode_image(path: Path) -> str:
-    """The photo as a JPEG data URL, upright and at most MAX_SIDE pixels on its long side."""
-    with Image.open(path) as img:
-        img = ImageOps.exif_transpose(img).convert("RGB")
-        img.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=90)
+def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE) -> str:
+    """The photo as a JPEG data URL, upright and at most max_side pixels on its long side."""
+    if isinstance(source, Image.Image):
+        img = source.convert("RGB")
+    else:
+        with Image.open(source) as opened:
+            img = ImageOps.exif_transpose(opened).convert("RGB")
+    img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
@@ -85,15 +88,19 @@ def interpret(raw: str | None, schema: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract(
-    image: Path,
+def complete_json(
+    image: Path | Image.Image,
     schema: dict[str, Any],
+    prompt: str,
     model: str,
     *,
     think: bool = False,
+    max_side: int = MAX_SIDE,
+    name: str = "vlm-extract",
+    metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
-) -> dict[str, Any]:
-    """Ask an Ollama model to fill the schema from the photo; traced by Langfuse."""
+) -> str | None:
+    """One schema-constrained call to an Ollama model with an image; traced by Langfuse."""
     from langfuse.openai import OpenAI  # type: ignore # drop-in wrapper: traces every call
 
     client = OpenAI(
@@ -109,8 +116,8 @@ def extract(
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": build_prompt(schema)},
-                    {"type": "image_url", "image_url": {"url": encode_image(image)}},
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": encode_image(image, max_side)}},
                 ],
             }
         ],
@@ -122,8 +129,29 @@ def extract(
                 "schema": response_schema(schema),
             },
         },
-        name="vlm-extract",
-        metadata={"prompt_version": PROMPT_VERSION, "think": think},
+        name=name,
+        metadata={"think": think, **(metadata or {})},
         **options,
     )
-    return interpret(response.choices[0].message.content, schema)
+    return response.choices[0].message.content
+
+
+def extract(
+    image: Path,
+    schema: dict[str, Any],
+    model: str,
+    *,
+    think: bool = False,
+    base_url: str | None = None,
+) -> dict[str, Any]:
+    """Ask an Ollama model to fill the form schema from the photo."""
+    raw = complete_json(
+        image,
+        schema,
+        build_prompt(schema),
+        model,
+        think=think,
+        metadata={"prompt_version": PROMPT_VERSION},
+        base_url=base_url,
+    )
+    return interpret(raw, schema)
