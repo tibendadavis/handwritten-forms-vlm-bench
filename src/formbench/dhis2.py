@@ -44,3 +44,11 @@ class Dhis2Client:
         response = self._http.get(f"/dataSets/{uid}", params={"fields": DATASET_FIELDS})
         response.raise_for_status()
         return response.json()
+
+    def find_org_units_by_code(self, code: str) -> list[dict[str, Any]]:
+        response = self._http.get(
+            "/organisationUnits",
+            params={"filter": f"code:eq:{code}", "fields": "id,name,code", "paging": "false"},
+        )
+        response.raise_for_status()
+        return response.json()["organisationUnits"]
