@@ -32,6 +32,7 @@ extract = "formbench.extract:main"
 register-template = "formbench.register_template:main"
 register-run = "formbench.register_run:main"
 register-approve = "formbench.register_payload:main"
+register-synth = "formbench.register_synth:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
