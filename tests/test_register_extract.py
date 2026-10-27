@@ -4,6 +4,8 @@ import pytest
 from test_register_template import draw_register
 
 from formbench.register_extract import (
+    GAP,
+    KEY_HEADER_H,
     ROWS_PER_TILE,
     TILE_COLUMNS,
     AlignmentFailed,
@@ -64,9 +66,9 @@ def test_tiles_keep_only_needed_columns_under_the_header(template):
     assert [rows for _, rows in strips][0] == list(range(ROWS_PER_TILE))
     assert sum(len(rows) for _, rows in strips) == 17
     width = sum(layout["columns"][c][1] - layout["columns"][c][0] for c in TILE_COLUMNS)
-    header = layout["header"]["y1"] - layout["header"]["y0"]
+    width += GAP * (len(TILE_COLUMNS) - 1)
     first = layout["rows"][0]["y0"], layout["rows"][ROWS_PER_TILE - 1]["y1"]
-    assert strips[0][0].size == (width, header + first[1] - first[0])
+    assert strips[0][0].size == (width, KEY_HEADER_H + first[1] - first[0])
     assert not {"B", "E", "F", "H"} & set(TILE_COLUMNS)
 
 
