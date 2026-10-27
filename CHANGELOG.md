@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `extract` CLI: per-field result table, metric summary with latency, run files in `results/runs/`, Langfuse trace with metadata and scores
 - ADRs 0002 (template Tesseract baseline) and 0003 (VLM structured output and thinking); README "Try it" walkthrough
 - CI installs Tesseract so OCR tests run there
+- R-06 register pipeline: daily RI v2 values from photographed immunisation register pages, replacing weekly tally sheets
+  - `register-template`: renders the blank register PDF and detects its grid and header areas
+  - Strict parsing of handwritten dates and the register's age notation
+  - Column-to-vaccine/dose mapping with data element and category option combo UIDs resolved from DHIS2 metadata; age bands parsed from COC names
+  - Extraction schemas that cannot return names, guardians, phone numbers or villages
+  - Page reading in two modes: whole photo, or aligned 4-row strips with only the counting columns (ORB + RANSAC + ECC alignment, grid-overlap check)
+  - Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
+  - Approved-reading state per register book: re-read discrepancies, late entries as full-total corrections, reviewer fixes carried forward
+  - `register-run`: draft, self-contained `review.html` and `decisions.yaml`; `register-approve`: refuses open flags, requires typed confirmation, writes `datavalueset.json` (never posted)
+  - `register-synth`: multi-week synthetic scenarios with injected edge cases, handwritten on the real blank page and photographed in three quality tiers
+  - `register-bench`: transcription, review-workload, flag-catch and approved-value scores per model and mode, traced in Langfuse
+  - ADR 0004 (register to daily aggregates)
+- Read-only org unit lookup by code in the DHIS2 client
 
 ### Fixed
 - `.env.example` uses `LANGFUSE_HOST`, the variable the installed Langfuse SDK reads

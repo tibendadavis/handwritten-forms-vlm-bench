@@ -124,6 +124,31 @@ uv run extract --form forms/child_health-7 --image data/private/child_health-7.j
 
 Design notes: [ADR 0002](docs/adr/0002-template-tesseract-baseline.md) (template OCR baseline), [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) (structured output and thinking).
 
+## Register to daily DHIS2 values (R-06)
+
+Instead of re-counting the immunisation register onto weekly tally sheets, photograph the register pages that got new entries this week. The model transcribes only the counting columns, code counts each dose on its own date into daily RI v2 values, and a person reviews and approves before any payload exists. Rules and reasoning: [ADR 0004](docs/adr/0004-register-to-daily-aggregates.md).
+
+The blank register PDF, the DHIS2 metadata snapshot, photos, synthetic data and approval state all stay local (`data/private/`, `schemas/ri_v2/`), never in git.
+
+```bash
+# Once: put the blank R-06 PDF in data/private/samples/ and build the page template
+uv run register-template
+# In .env: REGISTER_GO_LIVE=YYYY-MM-DD (doses dated before it are never counted)
+
+# Weekly: read the cover and the cohort pages photographed this week
+uv run register-run --week 2026W44 --cover cover.jpg --pages p1.jpg p2.jpg \
+    --engine ollama:qwen3.5:4b            # --mode tiles (default) or full
+# -> results/register/<week>_<stamp>/review.html and decisions.yaml
+#    Resolve every "must resolve" flag in decisions.yaml, then approve:
+uv run register-approve --run results/register/<week>_<stamp> --reviewer "Name"
+# -> datavalueset.json (+ corrections.json). Nothing is sent to DHIS2.
+
+# Benchmark on synthetic handwritten registers (rendered on the real blank page)
+uv run register-synth --seed 1 --weeks 3 --pages 3
+uv run register-bench --scenario data/private/synthetic/seed-1 \
+    --engine ollama:qwen3.5:4b --mode tiles --mode full
+```
+
 ## Tech
 
 Python · uv · Langfuse · Ollama / llama.cpp · MLX · OpenAI-compatible serving · DHIS2 Web API · GitHub Actions
