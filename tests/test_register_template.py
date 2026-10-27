@@ -7,7 +7,9 @@ from formbench.register_template import LETTERS, ROWS, TemplateError, detect_gri
 def draw_register(rows=ROWS):
     """A blank R-06-like grid: header band, letter row, child rows with a C/F sub-line."""
     page = np.full((2200, 3000), 255, np.uint8)
-    xs = [100 + i * 95 for i in range(len(LETTERS) + 1)]
+    # Irregular widths like the real R-06 (wide name columns, narrow dose columns).
+    widths = [70 + (i * 37) % 50 for i in range(len(LETTERS))]
+    xs = [100 + sum(widths[:i]) for i in range(len(LETTERS) + 1)]
     header = [150, 300, 420, 460]
     body = [460 + i * 100 for i in range(rows + 1)]
     for y in header + body:
