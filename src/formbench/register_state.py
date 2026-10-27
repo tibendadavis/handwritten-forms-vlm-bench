@@ -78,6 +78,37 @@ def _same(a: Any, b: Any, key: str) -> bool:
         return a == b
 
 
+def inherit_decisions(page: dict[str, Any], approved: dict[str, Any]) -> tuple[dict[str, Any], list[Flag]]:  # fmt: skip
+    """Carry a reviewer's earlier fixes (e.g. a birth date from the child's card) into a
+    re-read of the same row when the cell still reads blank or the same as before the fix."""
+    page = {**page, "rows": [dict(r) for r in page["rows"]]}
+    old_rows = {str(r.get("serial")): r for r in approved["rows"]}
+    notes = []
+    for row in page["rows"]:
+        serial = str(row.get("serial"))
+        old = old_rows.get(serial)
+        if not old:
+            continue
+        for key in old.get("_decided", []):
+            if row.get(key) in (None, "") or not _parses(row.get(key), key):
+                row[key] = old.get(key)
+                row["_decided"] = sorted({*row.get("_decided", []), key})
+                notes.append(Flag("kept_decision", f"{key} kept from an earlier approval: {old.get(key)!r}", False, page["page_id"], serial, key))  # fmt: skip
+        if old.get("_accept_cohort"):
+            row["_accept_cohort"] = True
+    return page, notes
+
+
+def _parses(value: Any, key: str) -> bool:
+    if key == "sex":
+        return str(value).strip()[:1].upper() in ("F", "M")
+    try:
+        parse_date(value)
+        return True
+    except Unreadable:
+        return False
+
+
 def discrepancies(page: dict[str, Any], approved: dict[str, Any]) -> list[Flag]:
     """Cells that read differently from the approved reading of the same page.
 
