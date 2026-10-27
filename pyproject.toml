@@ -30,6 +30,7 @@ build-schema = "formbench.build_schema:main"
 make-form = "formbench.form_gen:main"
 extract = "formbench.extract:main"
 register-template = "formbench.register_template:main"
+register-run = "formbench.register_run:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
