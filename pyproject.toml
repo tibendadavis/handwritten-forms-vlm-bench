@@ -27,6 +27,7 @@ formbench = "formbench:main"
 smoke = "formbench.smoke:main"
 build-schema = "formbench.build_schema:main"
 make-form = "formbench.form_gen:main"
+extract = "formbench.extract:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
