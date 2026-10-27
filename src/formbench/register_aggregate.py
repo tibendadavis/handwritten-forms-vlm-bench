@@ -124,11 +124,14 @@ def apply_decisions(pages: list[dict[str, Any]], decisions: dict[str, Any]) -> l
             page["cohort_year"], page["cohort_month"] = year, month
         for row in page["rows"]:
             row_decisions = (page_decisions.get("rows") or {}).get(str(row.get("serial"))) or {}
-            for key in ("birth_date", "sex"):
-                if key in row_decisions:
-                    row[key] = row_decisions[key]
-            row.update(row_decisions.get("cells") or {})
-            row["_accept_cohort"] = bool(row_decisions.get("accept_cohort"))
+            changes = {k: row_decisions[k] for k in ("birth_date", "sex") if k in row_decisions}
+            changes.update(row_decisions.get("cells") or {})
+            row.update(changes)
+            # Remember what a reviewer decided, so later re-reads of this row can keep it.
+            row["_decided"] = sorted({*row.get("_decided", []), *changes})
+            row["_accept_cohort"] = bool(
+                row_decisions.get("accept_cohort") or row.get("_accept_cohort")
+            )
     return pages
 
 

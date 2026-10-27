@@ -31,6 +31,7 @@ from formbench.register_state import (
     book_id,
     corrections,
     discrepancies,
+    inherit_decisions,
     page_identity,
 )
 
@@ -100,10 +101,16 @@ def compute_draft(
     book = book_id(cover.get("mfl_code"), aoc_name or "unresolved")
     state = RegisterState(book, root=state_root)
 
-    fixed = apply_decisions(pages, decisions)
+    approved = state.approved_pages() if aoc else {}
+    inherited = []
+    for page in pages:
+        if page["page_id"] in approved:
+            page, notes = inherit_decisions(page, approved[page["page_id"]])
+            flags += notes
+        inherited.append(page)
+    fixed = apply_decisions(inherited, decisions)
     agg = aggregate(fixed, spec, go_live=go_live, today=today, resolved=resolved)
     flags += agg.flags
-    approved = state.approved_pages() if aoc else {}
     for page in fixed:
         if page["page_id"] in approved:
             flags += discrepancies(page, approved[page["page_id"]])
@@ -138,6 +145,11 @@ def compute_draft(
         "corrections": _value_rows(fixes, after.provenance if after else {}, labels, previous),
         "flags": flag_rows,
         "unresolved_blocking": [f["id"] for f in flag_rows if f["blocking"] and not f["resolved"]],
+        # Readings with decisions applied: what gets stored as approved.
+        "pages": [
+            {**p, "rows": [{k: v for k, v in r.items() if k != "_strip"} for r in p["rows"]]}
+            for p in fixed
+        ],
     }
 
 
