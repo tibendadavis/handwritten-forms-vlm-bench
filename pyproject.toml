@@ -16,6 +16,7 @@ dependencies = [
     "pillow>=11.3.0",
     "psutil>=7.2.2",
     "pydantic>=2.13.5",
+    "pypdfium2>=5.14.0",
     "pytesseract>=0.3.13",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
