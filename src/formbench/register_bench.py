@@ -414,7 +414,7 @@ def _table(title: str, rows: list[tuple[str, str, dict[str, Any]]]) -> Table:
     return table
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Benchmark VLMs on a synthetic register scenario.")
     parser.add_argument(
         "--scenario", type=Path, required=True, help="data/private/synthetic/seed-N"
@@ -427,6 +427,14 @@ def main() -> None:
     )
     parser.add_argument("--metadata", type=Path, default=Path("schemas/ri_v2/metadata.json"))
     parser.add_argument("--out", type=Path, default=Path("results/register/bench"))
+    parser.add_argument(
+        "--max-side", type=int, help="longest image side sent in full mode (default 3072)"
+    )
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
 
     load_dotenv(find_dotenv(usecwd=True))
