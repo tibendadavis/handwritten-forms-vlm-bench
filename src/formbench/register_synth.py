@@ -337,7 +337,16 @@ def main() -> None:
     parser.add_argument("--weeks", type=int, default=3)
     parser.add_argument("--pages", type=int, default=3, help="cohort pages in the register")
     parser.add_argument("--go-live", type=dt.date.fromisoformat, default=dt.date(2026, 9, 7))
-    parser.add_argument("--quality", choices=["mixed", "scan", "good", "poor"], default="mixed")
+    parser.add_argument(
+        "--quality", choices=["mixed", "scan", "good", "poor", "terrible"], default="mixed"
+    )
+    parser.add_argument(
+        "--messiness", choices=["mixed", "neat", "average", "bad", "terrible"], default="mixed"
+    )
+    parser.add_argument(
+        "--paper", choices=["a3", "a4"], default="a3", help="physical register size"
+    )
+    parser.add_argument("--name", help="scenario folder name (default seed-N)")
     parser.add_argument("--metadata", type=Path, default=Path("schemas/dataset/metadata.json"))
     parser.add_argument("--out", type=Path, default=Path("data/private/synthetic"))
     args = parser.parse_args()
@@ -350,20 +359,30 @@ def main() -> None:
     cover = {"facility_name": "Riverside Health Centre", "mfl_code": f"MFL-{rng.randint(1000, 9999)}",  # fmt: skip
              "facility_type": rng.choice(FACILITY_TYPES), "district": "Hillside", "region": "Northern"}  # fmt: skip
     truth = build_truth(sim, json.loads(args.metadata.read_text()), cover, styles)
-    folder = args.out / f"seed-{args.seed}"
+    folder = args.out / (args.name or f"seed-{args.seed}")
     if folder.exists():
         shutil.rmtree(folder)
     folder.mkdir(parents=True)
-    render_scenario(folder, sim, truth, cover, styles, quality=args.quality, seed=args.seed)
+    render_scenario(
+        folder,
+        sim,
+        truth,
+        cover,
+        styles,
+        quality=args.quality,
+        seed=args.seed,
+        messiness=args.messiness,
+        paper=args.paper,
+    )
     edges = [{"code": e["code"], "serial": str(e["child"].serial), "cohort": f"{e['page'].year}-{e['page'].month:02d}",
               "column": e.get("column")} for e in sim["edges"]]  # fmt: skip
-    meta = {"seed": args.seed, "go_live": args.go_live.isoformat(), "cover": cover,
+    meta = {"seed": args.seed, "messiness": args.messiness, "quality": args.quality, "paper": args.paper, "go_live": args.go_live.isoformat(), "cover": cover,
             "intended_option": _intended_option(cover["facility_type"]), "edges": edges, "weeks": truth}  # fmt: skip
     (folder / "truth.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False, default=str) + "\n"
     )
     photos = sum(len(w["photos"]) for w in truth)
-    print(f"Scenario seed-{args.seed}: {len(truth)} weeks, {photos} page photos -> {folder}/")
+    print(f"Scenario {folder.name}: {len(truth)} weeks, {photos} page photos -> {folder}/")
 
 
 if __name__ == "__main__":
