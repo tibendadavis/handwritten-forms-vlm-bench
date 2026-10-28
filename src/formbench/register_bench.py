@@ -25,32 +25,16 @@ from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from formbench.handwriting import Unreadable, parse_date
+from formbench.handwriting import Unreadable
 from formbench.register_aggregate import parse_cohort, resolve_attribute_option
 from formbench.register_run import compute_draft, names
+from formbench.register_scoring import _blank, quality_metrics, same_value, score_cover, score_page
 from formbench.register_spec import DOSE_COLUMNS, load_spec
 from formbench.register_state import RegisterState, page_identity
 from formbench.schema_gen import slugify
 
 DOSES = [c.key for c in DOSE_COLUMNS]
 CHILDREN = "Children vaccinated"
-
-
-def _blank(value: Any) -> bool:
-    return value is None or not str(value).strip()
-
-
-def same_value(truth: Any, predicted: Any, key: str) -> bool:
-    if _blank(truth) or _blank(predicted):
-        return _blank(truth) and _blank(predicted)
-    if key in ("sex",):
-        return str(truth).strip()[:1].upper() == str(predicted).strip()[:1].upper()
-    if key in ("birth_date", *DOSES):
-        try:
-            return parse_date(str(truth)) == parse_date(str(predicted))
-        except Unreadable:
-            return False
-    return " ".join(str(truth).split()).casefold() == " ".join(str(predicted).split()).casefold()
 
 
 def score_transcription(predicted: dict[str, Any], truth: dict[str, Any]) -> dict[str, Any]:
@@ -326,7 +310,7 @@ def summarize(counts: dict[str, int], weeks: int, pages: int, latency: float, va
 
 
 def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[str, Any],
-              latency: float) -> dict[str, Any]:  # fmt: skip
+              latency: float, cover: dict[str, Any] | None = None) -> dict[str, Any]:  # fmt: skip
     """All scores from what a run recorded, so saved runs can be re-scored without a model."""
     spec = load_spec(ds)
     page_counts, value_counts, review, drafts = [], [], [], []
@@ -337,6 +321,9 @@ def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[s
             pages_total += 1
             valid += int(reading["json_valid"])
             page_counts.append(score_transcription(reading["reading"], photo["reading"]))
+            page_counts.append(
+                score_page(reading["reading"], photo["reading"], reading["json_valid"])
+            )
         first = {"flags": out["first_flags"],
                  "unresolved_blocking": [f["id"] for f in out["first_flags"] if f["blocking"] and not f["resolved"]]}  # fmt: skip
         drafts.append(first)
@@ -346,12 +333,37 @@ def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[s
     cover_expected = resolve_attribute_option(truth["cover"]["facility_type"], spec)[1] is not None
     counts = {**_sum(page_counts), **_sum(value_counts), **_sum(review),
               **flag_catch(drafts, truth["edges"], cover_expected)}  # fmt: skip
-    metrics = summarize(counts, len(truth["weeks"]), pages_total, latency, valid)
+    if cover is not None:
+        counts = _sum([counts, score_cover(cover, truth["cover"])])
+    metrics = {**quality_metrics(counts), **summarize(counts, len(truth["weeks"]), pages_total, latency, valid)}  # fmt: skip
     return {"metrics": metrics, "counts": counts}
 
 
-def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: bool = False) -> dict[str, Any]:  # fmt: skip
-    from formbench.register_extract import read_cover, read_page
+def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, mode: str, template: Any,
+                     layout: dict[str, Any], think: bool = False, max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
+    """Read one page inside its own Langfuse span; with a truth, score it on that span."""
+    from langfuse import get_client
+
+    from formbench.register_extract import FULL_MAX_SIDE, read_page
+
+    langfuse = get_client()
+    with langfuse.start_as_current_span(name=f"page {photo.name}", metadata={"mode": mode}) as span:
+        start = time.perf_counter()
+        result = read_page(photo, model, mode=mode, template=template, layout=layout, think=think,
+                           max_side=max_side or FULL_MAX_SIDE)  # fmt: skip
+        result["latency_s"] = round(time.perf_counter() - start, 1)
+        if truth is not None:
+            result["scores"] = quality_metrics(score_page(result["reading"], truth, result["json_valid"]))  # fmt: skip
+            for name, value in result["scores"].items():
+                if value is not None:
+                    span.score(name=name, value=float(value))
+            span.score(name="latency_s", value=result["latency_s"])
+    return result
+
+
+def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: bool = False,
+              max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
+    from formbench.register_extract import read_cover
     from formbench.register_template import load_template
 
     truth = json.loads((scenario / "truth.json").read_text())
@@ -366,7 +378,8 @@ def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: 
         for week in truth["weeks"]:
             pages, readings = [], []
             for photo in week["photos"]:
-                result = read_page(scenario / photo["file"], model, mode=mode, template=template, layout=layout, think=think)  # fmt: skip
+                result = read_scored_page(scenario / photo["file"], photo["reading"], model, mode=mode,
+                                          template=template, layout=layout, think=think, max_side=max_side)  # fmt: skip
                 pid = page_identity(result["reading"], Path(photo["file"]).stem)
                 pages.append({"page_id": pid, **result["reading"]})
                 readings.append({"file": photo["file"], "page_id": pid, "notes": result["notes"],
@@ -380,7 +393,7 @@ def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: 
         latency = time.perf_counter() - start
     finally:
         shutil.rmtree(state_root, ignore_errors=True)
-    scored = score_run(weeks_out, truth, ds, latency)
+    scored = score_run(weeks_out, truth, ds, latency, cover["cover"])
     return {**scored, "latency_s": round(latency, 1), "cover": cover["cover"], "weeks": weeks_out}
 
 
@@ -425,7 +438,9 @@ def main() -> None:
         for path in args.rescore:
             run = json.loads(path.read_text())
             latency = run.get("latency_s") or run["metrics"]["latency_s_per_page"] * sum(len(w["pages"]) for w in run["weeks"])  # fmt: skip
-            run.update(score_run(run["weeks"], truth, ds, latency), latency_s=latency)
+            run.update(
+                score_run(run["weeks"], truth, ds, latency, run.get("cover")), latency_s=latency
+            )
             path.write_text(json.dumps(run, indent=2, ensure_ascii=False, default=str) + "\n")
             rows.append((run["settings"]["engine"], run["settings"]["mode"], run["metrics"]))
         console.print(_table(f"Register benchmark (re-scored): {args.scenario.name}", rows))
@@ -441,13 +456,16 @@ def main() -> None:
         kind, _, model = engine.partition(":")
         if kind != "ollama" or not model:
             raise SystemExit("register-bench: --engine must be 'ollama:<model-tag>'")
-        for mode in args.mode or ["tiles"]:
-            settings = {"scenario": args.scenario.name, "engine": engine, "mode": mode, "think": args.think}  # fmt: skip
+        for mode in args.mode or ["full"]:
+            settings = {"scenario": args.scenario.name, "engine": engine, "mode": mode, "think": args.think,
+                        "max_side": args.max_side}  # fmt: skip
             console.print(f"Running {engine} ({mode}) on {args.scenario.name}...")
             try:
                 with langfuse.start_as_current_span(name="register-bench", metadata=settings):
                     langfuse.update_current_trace(name=f"register-bench {args.scenario.name}", metadata=settings, tags=["register-bench", mode])  # fmt: skip
-                    result = run_bench(args.scenario, model, mode, ds, think=args.think)
+                    result = run_bench(
+                        args.scenario, model, mode, ds, think=args.think, max_side=args.max_side
+                    )
                     for name, value in result["metrics"].items():
                         if value is not None:
                             langfuse.score_current_trace(name=name, value=float(value))

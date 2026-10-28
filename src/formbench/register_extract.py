@@ -241,6 +241,7 @@ def read_page(
     template: np.ndarray,
     layout: dict[str, Any],
     think: bool = False,
+    max_side: int = FULL_MAX_SIDE,
 ) -> dict[str, Any]:
     """Transcribe one cohort page. Returns the reading plus validity, raw replies and notes.
 
@@ -261,9 +262,7 @@ def read_page(
             mode = "full"
 
     if mode == "full":
-        result = _call(
-            photo, page_schema(), page_prompt(), model, think, FULL_MAX_SIDE, "register-page"
-        )
+        result = _call(photo, page_schema(), page_prompt(), model, think, max_side, "register-page")
         values = result["values"]
         reading = {
             "cohort_month": values.get("cohort_month"),
