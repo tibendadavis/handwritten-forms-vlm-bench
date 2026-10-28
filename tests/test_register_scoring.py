@@ -80,3 +80,15 @@ def test_cover_text_scores():
     counts = score_cover({"facility_name": "Riverside Helth Centre", "mfl_code": "MFL-1234"}, truth)  # fmt: skip
     s = quality_metrics(counts)
     assert 0 < s["cer"] < 0.05 and s["cover_field_accuracy"] == 0.5
+
+
+def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
+    from formbench.register_eval import differences
+
+    pred = copy.deepcopy(TRUTH)
+    pred["rows"][0]["opv1"] = "17-01-26"
+    pred["rows"][1]["serial"] = "9"
+    diffs = differences(pred, TRUTH)
+    assert ("1", "opv1", "17-07-26", "17-01-26") in diffs
+    assert ("2", "(whole row)", "present", "missing") in diffs
+    assert ("9", "(whole row)", "absent", "invented") in diffs
