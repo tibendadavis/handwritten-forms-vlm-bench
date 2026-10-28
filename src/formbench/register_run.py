@@ -175,7 +175,7 @@ def main() -> None:
     parser.add_argument("--cover", type=Path, required=True, help="photo of the register cover")
     parser.add_argument("--pages", type=Path, nargs="+", required=True, help="cohort page photos")
     parser.add_argument("--engine", required=True, help="ollama:<model-tag>")
-    parser.add_argument("--mode", choices=["tiles", "full"], default="tiles")
+    parser.add_argument("--mode", choices=["full", "tiles"], default="full")
     parser.add_argument("--think", action="store_true")
     parser.add_argument("--metadata", type=Path, default=METADATA)
     parser.add_argument("--out", type=Path, default=RUNS_DIR)
