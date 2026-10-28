@@ -17,6 +17,11 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 SEED = 42
 # Phone photos are 12MP+; a fixed downscale keeps latency sane and runs repeatable.
 MAX_SIDE = 2048
+# A full register page is about 5k output tokens; the cap stops a reply that loops forever.
+MAX_TOKENS = 8192
+# One call may take minutes on a laptop; past this it has failed. No silent retries: a retry
+# repeats the same deterministic call and only multiplies the wait.
+REQUEST_TIMEOUT = 600.0
 
 
 def build_prompt(schema: dict[str, Any]) -> str:
@@ -99,12 +104,20 @@ def complete_json(
     name: str = "vlm-extract",
     metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
+    max_tokens: int = MAX_TOKENS,
 ) -> str | None:
-    """One schema-constrained call to an Ollama model with an image; traced by Langfuse."""
+    """One schema-constrained call to an Ollama model with an image; traced by Langfuse.
+
+    A reply cut off at max_tokens is returned as is; it fails JSON parsing and is recorded as
+    json_valid = 0 by the caller.
+    """
     from langfuse.openai import OpenAI  # type: ignore # drop-in wrapper: traces every call
 
     client = OpenAI(
-        base_url=base_url or os.environ.get("OLLAMA_BASE_URL", DEFAULT_BASE_URL), api_key="ollama"
+        base_url=base_url or os.environ.get("OLLAMA_BASE_URL", DEFAULT_BASE_URL),
+        api_key="ollama",
+        timeout=float(os.environ.get("VLM_TIMEOUT", REQUEST_TIMEOUT)),
+        max_retries=0,
     )
     # Ollama maps reasoning_effort "none" to think=false; omitting it keeps the model default.
     options: dict[str, Any] = {} if think else {"reasoning_effort": "none"}
@@ -112,6 +125,7 @@ def complete_json(
         model=model,
         temperature=0,
         seed=SEED,
+        max_tokens=max_tokens,
         messages=[
             {
                 "role": "user",
