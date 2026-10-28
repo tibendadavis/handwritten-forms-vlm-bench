@@ -135,19 +135,47 @@ The blank register PDF, the DHIS2 metadata snapshot, photos, synthetic data and 
 uv run register-template
 # In .env: REGISTER_GO_LIVE=YYYY-MM-DD (doses dated before it are never counted)
 
-# Weekly: read the cover and the cohort pages photographed this week
+# Weekly: read the cover and the cohort pages photographed this week (whole-page photos)
 uv run register-run --week 2026W44 --cover cover.jpg --pages p1.jpg p2.jpg \
-    --engine ollama:qwen3.5:4b            # --mode tiles (default) or full
+    --engine ollama:qwen3.5:4b            # --mode full (default) or tiles
 # -> results/register/<week>_<stamp>/review.html and decisions.yaml
 #    Resolve every "must resolve" flag in decisions.yaml, then approve:
 uv run register-approve --run results/register/<week>_<stamp> --reviewer "Name"
 # -> datavalueset.json (+ corrections.json). Nothing is sent to DHIS2.
-
-# Benchmark on synthetic handwritten registers (rendered on the real blank page)
-uv run register-synth --seed 1 --weeks 3 --pages 3
-uv run register-bench --scenario data/private/synthetic/seed-1 \
-    --engine ollama:qwen3.5:4b --mode tiles --mode full
 ```
+
+### Testing a model
+
+Scores (CER, WER, ANLS, ANLSL, field accuracy and F1, STP rate, GAnTED, Tree F1, schema pass rate, plus review and approved-value scores) are defined in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md). Every run is traced in Langfuse with these scores on the trace and on each page.
+
+```bash
+# 0. Pull the model you want to test
+ollama pull <model-tag>
+
+# 1. Synthetic handwritten registers with known answers (on the real blank page)
+#    --messiness neat|average|bad|terrible|mixed   --quality scan|good|poor|terrible|mixed
+uv run register-synth --name bad-poor --seed 25 --weeks 2 --pages 3 --messiness bad --quality poor
+ls data/private/synthetic/bad-poor/week-01/        # the page photos
+
+# 2. One photo, one model: wrong cells, scores, Langfuse trace
+uv run register-eval --scenario data/private/synthetic/bad-poor \
+    --photo week-01/<page-file>.jpg --engine ollama:<model-tag>
+
+# 3. A whole scenario (every week, through review and approval) for one or more models
+uv run register-bench --scenario data/private/synthetic/bad-poor \
+    --engine ollama:qwen3.5:4b --engine ollama:<model-tag>
+
+# 4. Compare models over all scenarios you have run
+uv run register-bench --summary results/register/bench/*.json
+
+# A real photo: run once without truth, correct the saved "reading" by hand into a
+# truth file, then score against it
+uv run register-eval --image data/private/photos/page.jpg --engine ollama:<model-tag>
+uv run register-eval --image data/private/photos/page.jpg --truth data/private/photos/page.truth.json \
+    --engine ollama:<model-tag>
+```
+
+Options: `--max-side 4096` sends a larger image (full mode), `--think` lets thinking models think, `--mode tiles` reads aligned strips instead of the whole page.
 
 ## Tech
 

@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `register-bench`: transcription, review-workload, flag-catch and approved-value scores per model and mode, traced in Langfuse
   - ADR 0004 (register to daily aggregates)
 - Read-only org unit lookup by code in the DHIS2 client
+- Register evaluation scores (ADR 0005): CER, WER, ANLS, ANLSL, field accuracy, field F1, STP rate, GAnTED, Tree F1, schema pass rate and cover accuracy, per page (own Langfuse span) and per run
+- `register-eval`: test one photo with one model; shows every cell read differently from the truth, scores it and saves the reading
+- `register-bench --summary`: combine saved runs across scenarios per model and mode; `--max-side` for full-page resolution
+- Synthetic registers: one to three writers per page, messiness levels up to terrible handwriting, pencil and faded ink, spill over cell borders, an A3-sized register and a terrible photo tier
+
+### Changed
+- Register reading defaults to the whole page (`--mode full`), since users photograph the whole register page
 
 ### Fixed
+- `register-bench` failed on start because `--max-side` was read but never registered
 - `.env.example` uses `LANGFUSE_HOST`, the variable the installed Langfuse SDK reads
