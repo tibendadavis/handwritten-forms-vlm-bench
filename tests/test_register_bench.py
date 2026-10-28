@@ -107,3 +107,28 @@ def test_flags_on_misreads_count_as_caught_and_others_as_false_alarms():
     # A re-read that disagrees with an approved reading is never a false alarm.
     changed = {**flag, "code": "changed_since_approved", "serial": "2"}
     assert review_counts([changed], pages, truth, [])["false_alarms"] == 0
+
+
+def test_cli_accepts_every_option_main_uses():
+    from formbench.register_bench import build_parser
+
+    args = build_parser().parse_args(
+        [
+            "--scenario",
+            "s",
+            "--engine",
+            "ollama:m",
+            "--mode",
+            "full",
+            "--max-side",
+            "4096",
+            "--think",
+        ]
+    )
+    assert (args.max_side, args.mode, args.engine, args.think) == (
+        4096,
+        ["full"],
+        ["ollama:m"],
+        True,
+    )
+    assert args.rescore is None and args.out.name == "bench"
