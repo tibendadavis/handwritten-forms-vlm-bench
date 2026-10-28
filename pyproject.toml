@@ -35,6 +35,7 @@ register-run = "formbench.register_run:main"
 register-approve = "formbench.register_payload:main"
 register-synth = "formbench.register_synth:main"
 register-bench = "formbench.register_bench:main"
+register-eval = "formbench.register_eval:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
