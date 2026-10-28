@@ -224,12 +224,20 @@ def clean_rows(rows: Any) -> list[dict[str, Any]]:
 
 
 def _call(image, schema, prompt, model, think, max_side, name):
+    """One model call. A timeout is recorded as an invalid reply (nothing read), not a crash,
+    so one stuck page cannot stop a whole benchmark; other errors (e.g. Ollama down) raise."""
+    import openai
+
     from formbench.vlm import complete_json, interpret
 
-    raw = complete_json(
-        image, schema, prompt, model, think=think, max_side=max_side, name=name,
-        metadata={"prompt_version": REGISTER_PROMPT_VERSION},
-    )  # fmt: skip
+    try:
+        raw = complete_json(
+            image, schema, prompt, model, think=think, max_side=max_side, name=name,
+            metadata={"prompt_version": REGISTER_PROMPT_VERSION},
+        )  # fmt: skip
+    except openai.APITimeoutError:
+        return {"raw": None, "values": dict.fromkeys(schema["properties"]), "json_valid": False,
+                "errors": ["model call timed out (no reply)"]}  # fmt: skip
     return interpret(raw, schema)
 
 
