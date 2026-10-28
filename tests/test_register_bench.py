@@ -132,3 +132,22 @@ def test_cli_accepts_every_option_main_uses():
         True,
     )
     assert args.rescore is None and args.out.name == "bench"
+
+
+def test_summary_sums_counts_across_scenarios():
+    from formbench.register_bench import combine
+
+    def run(cer_edits, chars, pages):
+        counts = {"cer_edits": cer_edits, "cer_chars": chars, "pages": pages, "rows": 1,
+                  "rows_found": 1, "rows_invented": 0, "date_cells": 1, "date_correct": 1,
+                  "blank_cells": 1, "blank_filled": 0, "written_cells": 1, "written_missed": 0,
+                  "birth": 1, "birth_correct": 1, "sex_correct": 1, "card_correct": 1,
+                  "cohort_correct": pages, "blocking_flags": 0, "edges": 0, "edges_caught": 0,
+                  "misreads": 0, "misreads_flagged": 0, "false_alarms": 0, "values": 1,
+                  "values_exact": 1, "values_missing": 0, "values_extra": 0, "abs_error": 0,
+                  "children": 0, "children_exact": 0}  # fmt: skip
+        weeks = [{"pages": [{"json_valid": True}] * pages}]
+        return {"settings": {"engine": "ollama:m", "mode": "full"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
+
+    combined = combine([run(1, 10, 1), run(9, 90, 3)])[("ollama:m", "full")]
+    assert combined["cer"] == 0.1 and combined["pages"] == 4 and combined["scenarios"] == 2

@@ -417,7 +417,7 @@ def _table(title: str, rows: list[tuple[str, str, dict[str, Any]]]) -> Table:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Benchmark VLMs on a synthetic register scenario.")
     parser.add_argument(
-        "--scenario", type=Path, required=True, help="data/private/synthetic/seed-N"
+        "--scenario", type=Path, help="data/private/synthetic/<name> (not needed with --summary)"
     )
     parser.add_argument("--engine", action="append", help="ollama:<tag>; repeatable")
     parser.add_argument("--mode", action="append", choices=["tiles", "full"], help="repeatable")
@@ -430,7 +430,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-side", type=int, help="longest image side sent in full mode (default 3072)"
     )
+    parser.add_argument(
+        "--summary", type=Path, nargs="+", help="combine saved runs across scenarios"
+    )
     return parser
+
+
+def combine(runs: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Per (engine, mode): counts summed over scenarios, then rates taken once (not an
+    average of averages)."""
+    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for run in runs:
+        groups.setdefault((run["settings"]["engine"], run["settings"]["mode"]), []).append(run)
+    out = {}
+    for key, group in groups.items():
+        counts = _sum([r["counts"] for r in group])
+        pages = sum(len(w["pages"]) for r in group for w in r["weeks"])
+        weeks = sum(len(r["weeks"]) for r in group)
+        valid = sum(int(p["json_valid"]) for r in group for w in r["weeks"] for p in w["pages"])
+        latency = sum(r.get("latency_s") or 0 for r in group)
+        out[key] = {**quality_metrics(counts), **summarize(counts, weeks, pages, latency, valid),
+                    "scenarios": len(group), "pages": pages}  # fmt: skip
+    return out
 
 
 def main() -> None:
@@ -441,6 +462,15 @@ def main() -> None:
     ds = json.loads(args.metadata.read_text())
     console = Console()
     rows = []
+    if args.summary:
+        runs = [json.loads(p.read_text()) for p in args.summary]
+        rows = [
+            (engine, mode, metrics) for (engine, mode), metrics in sorted(combine(runs).items())
+        ]
+        console.print(_table(f"Combined over {len(runs)} run(s)", rows))
+        return
+    if not args.scenario:
+        raise SystemExit("register-bench: --scenario is required (except with --summary)")
     if args.rescore:
         truth = json.loads((args.scenario / "truth.json").read_text())
         for path in args.rescore:
@@ -454,7 +484,7 @@ def main() -> None:
         console.print(_table(f"Register benchmark (re-scored): {args.scenario.name}", rows))
         return
     if not args.engine:
-        raise SystemExit("register-bench: give --engine (or --rescore run files)")
+        raise SystemExit("register-bench: give --engine (or --rescore / --summary run files)")
 
     from langfuse import get_client
 
