@@ -14,10 +14,7 @@ dependencies = [
     "openai>=2.48.0",
     "opencv-python-headless>=5.0.0.93",
     "pillow>=11.3.0",
-    "psutil>=7.2.2",
-    "pydantic>=2.13.5",
     "pypdfium2>=5.14.0",
-    "pytesseract>=0.3.13",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
     "rich>=15.0.0",
@@ -25,11 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-formbench = "formbench:main"
-smoke = "formbench.smoke:main"
-build-schema = "formbench.build_schema:main"
-make-form = "formbench.form_gen:main"
-extract = "formbench.extract:main"
+fetch-metadata = "formbench.dhis2:main"
 register-template = "formbench.register_template:main"
 register-run = "formbench.register_run:main"
 register-approve = "formbench.register_payload:main"

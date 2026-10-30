@@ -1,9 +1,15 @@
+"""Read-only DHIS2 client: data set metadata and org unit lookup. It never writes to DHIS2."""
+
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from typing import Any
 
 import httpx
+
+from formbench.files import slugify, write_json
 
 DATASET_FIELDS = ",".join(
     [
@@ -52,3 +58,27 @@ class Dhis2Client:
         )
         response.raise_for_status()
         return response.json()["organisationUnits"]
+
+
+def fetch_metadata(dataset: str, out: Path | None = None) -> Path:
+    """Save a data set's metadata (elements, category option combos, attribute options) as
+    schemas/<data set name>/metadata.json, the offline source of truth for counting."""
+    ds = Dhis2Client.from_env().get_dataset(dataset)
+    path = (out or Path("schemas") / slugify(ds["name"])) / "metadata.json"
+    write_json(path, ds)
+    return path
+
+
+def main() -> None:
+    import argparse
+
+    from dotenv import find_dotenv, load_dotenv
+
+    parser = argparse.ArgumentParser(description="Download DHIS2 data set metadata (read-only).")
+    parser.add_argument("--dataset", required=True, help="DHIS2 data set UID")
+    parser.add_argument("--out", type=Path, help="folder (default schemas/<data set name>)")
+    args = parser.parse_args()
+    load_dotenv(find_dotenv(usecwd=True))
+    path = fetch_metadata(args.dataset, args.out)
+    ds = json.loads(path.read_text())
+    print(f"{ds['name']}: {len(ds['dataSetElements'])} data elements -> {path}")
