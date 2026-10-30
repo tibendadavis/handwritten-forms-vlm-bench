@@ -6,7 +6,6 @@ from PIL import Image
 
 from formbench.vlm import (
     MAX_SIDE,
-    build_prompt,
     encode_image,
     interpret,
     parse_json,
@@ -58,12 +57,6 @@ def test_unparseable_reply_gives_all_null():
     result = interpret("I cannot read this form.", SCHEMA)
     assert not result["json_valid"]
     assert result["values"] == {"period": None, "bcg__lt_1y": None}
-
-
-def test_prompt_lists_every_key_with_its_description():
-    prompt = build_prompt(SCHEMA)
-    assert "- bcg__lt_1y: BCG doses given (<1y)" in prompt
-    assert "- period: Period" in prompt
 
 
 def test_response_schema_drops_only_the_header():

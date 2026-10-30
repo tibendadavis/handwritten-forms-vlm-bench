@@ -11,8 +11,6 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from PIL import Image, ImageOps
 
-# Bump when the prompt text changes so runs stay comparable.
-PROMPT_VERSION = "v1"
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 SEED = 42
 # Phone photos are 12MP+; a fixed downscale keeps latency sane and runs repeatable.
@@ -22,22 +20,6 @@ MAX_TOKENS = 8192
 # One call may take minutes on a laptop; past this it has failed. No silent retries: a retry
 # repeats the same deterministic call and only multiplies the wait.
 REQUEST_TIMEOUT = 600.0
-
-
-def build_prompt(schema: dict[str, Any]) -> str:
-    keys = "\n".join(
-        f"- {key}: {prop.get('description', key)}" for key, prop in schema["properties"].items()
-    )
-    return (
-        "You are reading a photo of a handwritten paper form.\n"
-        "Return one JSON object with exactly these keys:\n"
-        f"{keys}\n\n"
-        "Rules:\n"
-        "- Counts are integers, exactly as written in the box.\n"
-        "- Use null when a box is empty or unreadable. Never guess a value.\n"
-        "- Copy the facility name and period exactly as handwritten.\n"
-        "- Output only the JSON object."
-    )
 
 
 def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE) -> str:
@@ -148,24 +130,3 @@ def complete_json(
         **options,
     )
     return response.choices[0].message.content
-
-
-def extract(
-    image: Path,
-    schema: dict[str, Any],
-    model: str,
-    *,
-    think: bool = False,
-    base_url: str | None = None,
-) -> dict[str, Any]:
-    """Ask an Ollama model to fill the form schema from the photo."""
-    raw = complete_json(
-        image,
-        schema,
-        build_prompt(schema),
-        model,
-        think=think,
-        metadata={"prompt_version": PROMPT_VERSION},
-        base_url=base_url,
-    )
-    return interpret(raw, schema)

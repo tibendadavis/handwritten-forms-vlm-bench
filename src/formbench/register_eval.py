@@ -21,9 +21,9 @@ from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 from rich.table import Table
 
+from formbench.files import slugify
 from formbench.register_schema import ROW_FIELDS
 from formbench.register_scoring import same_value
-from formbench.schema_gen import slugify
 
 OUT_DIR = Path("results/register/eval")
 
