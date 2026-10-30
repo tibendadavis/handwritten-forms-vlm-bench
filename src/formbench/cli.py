@@ -60,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("runs", type=Path, nargs="+", help="results/register/bench/*.json")
     p.add_argument("--metadata", type=Path, default=METADATA)
 
+    sub.add_parser("scores", help="what every score means")
+
     p = sub.add_parser("synth", help="make a synthetic handwritten scenario")
     p.add_argument("--name", help="scenario folder name (default seed-N)")
     p.add_argument("--seed", type=int, default=1, help="same seed, same scenario")
@@ -108,6 +110,8 @@ def main(argv: list[str] | None = None) -> None:
         from formbench.evaluation.bench import command
     elif args.command == "compare":
         from formbench.evaluation.bench import compare as command
+    elif args.command == "scores":
+        from formbench.evaluation.bench import explain as command
     elif args.command == "synth":
         from formbench.synthetic.simulate import command
     elif args.command == "template":

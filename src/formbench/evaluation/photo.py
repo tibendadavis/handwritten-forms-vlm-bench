@@ -63,15 +63,15 @@ def _truth_for(args: argparse.Namespace) -> tuple[Path, dict[str, Any] | None]:
 
 
 def command(args: argparse.Namespace) -> None:
+    from langfuse import get_client
 
     from formbench.cli import model_tag
+    from formbench.evaluation.bench import read_scored_page, score_table
+    from formbench.register.spec import load_spec
 
     model = model_tag(args.engine)
     image, truth = _truth_for(args)
-
-    from langfuse import get_client
-
-    from formbench.evaluation.bench import read_scored_page
+    spec = load_spec(json.loads(args.metadata.read_text()))
 
     langfuse = get_client()
     settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side,
@@ -79,10 +79,9 @@ def command(args: argparse.Namespace) -> None:
     try:
         with langfuse.start_as_current_span(name="register-eval", metadata=settings):
             langfuse.update_current_trace(name=f"register-eval {image.name}", metadata=settings, tags=["register-eval"])  # fmt: skip
-            result = read_scored_page(image, truth, model, think=args.think, max_side=args.max_side)
+            result = read_scored_page(image, truth, model, spec, think=args.think, max_side=args.max_side)  # fmt: skip
             for name, value in (result.get("scores") or {}).items():
-                if value is not None:
-                    langfuse.score_current_trace(name=name, value=float(value))
+                langfuse.score_current_trace(name=name, value=float(value))
             trace_id = langfuse.get_current_trace_id()
     finally:
         langfuse.flush()
@@ -101,11 +100,7 @@ def command(args: argparse.Namespace) -> None:
         for serial, field, want, got in diffs:
             table.add_row(str(serial), field, "—" if want is None else str(want), "—" if got is None else str(got))  # fmt: skip
         console.print(table)
-        scores = Table(title="Scores (also on the Langfuse trace)", show_header=False)
-        for name, value in result["scores"].items():
-            shown = "n/a" if value is None else (f"{value:.4f}" if name in ("cer", "wer") else f"{value:.1%}")  # fmt: skip
-            scores.add_row(name, shown)
-        console.print(scores)
+        console.print(score_table("Scores (also on the Langfuse trace)", [(args.engine, result["scores"])]))  # fmt: skip
 
     path = args.out / f"{stamp()}_{slugify(image.stem)}_{slugify(args.engine)}.json"
     record = {"settings": settings, "trace_id": trace_id, "latency_s": result["latency_s"],
