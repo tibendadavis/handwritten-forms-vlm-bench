@@ -220,7 +220,7 @@ def render_page(template: np.ndarray, layout: dict[str, Any], reading: dict[str,
     Entries are written day by day, possibly by different staff: each row is written by
     whoever registered the child, and each dose date by whoever was on duty that day.
     """
-    from formbench.register_spec import DOSE_COLUMNS
+    from formbench.register.spec import DOSE_COLUMNS
 
     paper = np.dstack([template] * 3).astype(np.float32)
     tint = np.array([250, 247, 238], np.float32) / 255
@@ -373,8 +373,8 @@ def render_scenario(folder: Path, sim: dict[str, Any], truth: list[dict[str, Any
                     cover: dict[str, Any], styles: list[str], *, quality: str, seed: int,
                     messiness: str = "mixed", paper: str = "a3") -> None:  # fmt: skip
     """Write cover.jpg and each week's page photos; record file, quality and writers."""
-    from formbench.register_synth import fmt_date, private_fields
-    from formbench.register_template import load_template
+    from formbench.synthetic.simulate import fmt_date, private_fields
+    from formbench.synthetic.template import load_template
 
     rng = random.Random(f"render-{seed}")
     fonts = ensure_fonts()

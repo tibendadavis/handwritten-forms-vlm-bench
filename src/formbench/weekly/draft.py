@@ -1,6 +1,6 @@
 """One weekly run: read photos, build a draft with flags, write files for human review.
 
-Nothing here is final: the draft only becomes a DHIS2 payload through register-approve.
+Nothing here is final: the draft only becomes a DHIS2 payload through `formbench approve`.
 """
 
 from __future__ import annotations
@@ -14,9 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import find_dotenv, load_dotenv
 
-from formbench.register_aggregate import (
+from formbench.register.aggregate import (
     Flag,
     aggregate,
     apply_decisions,
@@ -25,8 +24,8 @@ from formbench.register_aggregate import (
     resolve_attribute_option,
     select_days,
 )
-from formbench.register_spec import RegisterSpec, load_spec
-from formbench.register_state import (
+from formbench.register.spec import RegisterSpec, load_spec
+from formbench.weekly.state import (
     RegisterState,
     book_id,
     corrections,
@@ -35,7 +34,6 @@ from formbench.register_state import (
     page_identity,
 )
 
-METADATA = Path("schemas/ri_v2/metadata.json")
 RUNS_DIR = Path("results/register")
 
 
@@ -165,21 +163,11 @@ def resolve_org_unit(mfl_code: str | None) -> tuple[str | None, str | None]:
     return units[0]["id"], None
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Read register photos into a draft for review.")
-    parser.add_argument("--week", required=True, help="ISO week, e.g. 2026W44")
-    parser.add_argument("--cover", type=Path, required=True, help="photo of the register cover")
-    parser.add_argument("--pages", type=Path, nargs="+", required=True, help="cohort page photos")
-    parser.add_argument("--engine", required=True, help="ollama:<model-tag>")
-    parser.add_argument("--think", action="store_true")
-    parser.add_argument("--metadata", type=Path, default=METADATA)
-    parser.add_argument("--out", type=Path, default=RUNS_DIR)
-    args = parser.parse_args()
+def command(args: argparse.Namespace) -> None:
 
-    kind, _, model = args.engine.partition(":")
-    if kind != "ollama" or not model:
-        raise SystemExit("register-run: --engine must be 'ollama:<model-tag>'")
-    load_dotenv(find_dotenv(usecwd=True))
+    from formbench.cli import model_tag
+
+    model = model_tag(args.engine)
     go_live = go_live_from_env()
     iso_week_days(args.week)  # validate early
     ds = json.loads(args.metadata.read_text())
@@ -187,8 +175,8 @@ def main() -> None:
 
     from langfuse import get_client
 
-    from formbench.register_extract import read_cover, read_page
-    from formbench.register_review import write_review
+    from formbench.register.reader import read_cover, read_page
+    from formbench.weekly.review import write_review
 
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = args.out / f"{args.week}_{stamp}"
@@ -230,14 +218,10 @@ def main() -> None:
         f"{len(draft['values'])} values, {len(draft['corrections'])} corrections, "
         f"{len(draft['unresolved_blocking'])} flags to resolve.\n"
         f"Review {run_dir / 'review.html'}, fill {run_dir / 'decisions.yaml'}, then run:\n"
-        f'  uv run register-approve --run {run_dir} --reviewer "Your Name"'
+        f'  uv run formbench approve --run {run_dir} --reviewer "Your Name"'
     )
 
 
 def load_decisions(run_dir: Path) -> dict[str, Any]:
     path = run_dir / "decisions.yaml"
     return (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
-
-
-if __name__ == "__main__":
-    main()

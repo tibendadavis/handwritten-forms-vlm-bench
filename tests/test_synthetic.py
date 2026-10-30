@@ -2,11 +2,11 @@ import datetime as dt
 import random
 
 import pytest
-from test_register_template import draw_register
+from test_synthetic_template import draw_register
 
-from formbench.handwriting import parse_date
-from formbench.register_render import FONT_DIR, make_writer, photograph, render_page
-from formbench.register_synth import (
+from formbench.register.handwriting import parse_date
+from formbench.synthetic.render import FONT_DIR, make_writer, photograph, render_page
+from formbench.synthetic.simulate import (
     VISITS,
     age_notation,
     build_truth,
@@ -15,7 +15,7 @@ from formbench.register_synth import (
     reading,
     simulate,
 )
-from formbench.register_template import detect_grid
+from formbench.synthetic.template import detect_grid
 
 GO_LIVE = dt.date(2026, 9, 7)
 COVER = {"facility_name": "X", "mfl_code": "MFL-1", "facility_type": "Outrech",

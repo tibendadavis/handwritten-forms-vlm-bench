@@ -4,8 +4,8 @@ import pytest
 from conftest import coc_uid
 from test_register_aggregate import page, row
 
-from formbench.register_spec import load_spec
-from formbench.register_state import (
+from formbench.register.spec import load_spec
+from formbench.weekly.state import (
     RegisterState,
     book_id,
     corrections,

@@ -1,12 +1,12 @@
 from jsonschema import Draft202012Validator
 
-from formbench.register_schema import (
+from formbench.register.prompts import (
     cover_schema,
     page_prompt,
     page_schema,
     rows_schema,
 )
-from formbench.register_spec import DOSE_COLUMNS
+from formbench.register.spec import DOSE_COLUMNS
 
 ROW = {
     "serial": "1",

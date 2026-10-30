@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from formbench.register_spec import DOSE_COLUMNS
+from formbench.register.spec import DOSE_COLUMNS
 
 # Bump when a register prompt or schema changes so runs stay comparable.
 REGISTER_PROMPT_VERSION = "r2"

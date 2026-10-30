@@ -14,8 +14,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from formbench.handwriting import Unreadable, completed_months, parse_date
-from formbench.register_spec import DOSE_COLUMNS, RegisterSpec
+from formbench.register.handwriting import Unreadable, completed_months, parse_date
+from formbench.register.spec import DOSE_COLUMNS, RegisterSpec
 
 MONTHS = {
     name: i

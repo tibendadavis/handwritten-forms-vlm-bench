@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from formbench.files import slugify
-from formbench.handwriting import Unreadable, parse_date
-from formbench.register_aggregate import (
+from formbench.register.aggregate import (
     Aggregation,
     Flag,
     aggregate,
@@ -21,7 +20,8 @@ from formbench.register_aggregate import (
     parse_cohort,
     select_days,
 )
-from formbench.register_spec import DOSE_COLUMNS, RegisterSpec
+from formbench.register.handwriting import Unreadable, parse_date
+from formbench.register.spec import DOSE_COLUMNS, RegisterSpec
 
 STATE_DIR = Path("data/private/register/state")
 COMPARED = ("sex", "birth_date", *(c.key for c in DOSE_COLUMNS))

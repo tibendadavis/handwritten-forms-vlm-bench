@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from test_register_aggregate import page, row
 
-from formbench.register_payload import ApprovalRefused, approve, data_value_set
+from formbench.weekly.approve import ApprovalRefused, approve, data_value_set
 
 GO_LIVE = dt.date(2025, 6, 2)
 COVER = {"facility_name": "Amani HC", "mfl_code": "MFL-1", "facility_type": "Fixed/Facility"}

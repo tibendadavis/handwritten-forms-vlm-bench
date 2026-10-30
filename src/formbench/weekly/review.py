@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from formbench.register_spec import DOSE_COLUMNS
+from formbench.register.spec import DOSE_COLUMNS
 
 HOW_TO = {
     "facility_type_unclear": "set attribute_option to one of the options",
@@ -129,7 +129,7 @@ def render_html(run_dir: Path, draft: dict[str, Any], readings: dict[str, Any]) 
 
 def decisions_template(draft: dict[str, Any], options: list[str]) -> str:
     lines = [
-        "# Reviewer decisions for this run. Edit, then run register-approve.",
+        "# Reviewer decisions for this run. Edit, then run `formbench approve`.",
         "# Every flag marked 'must resolve' in review.html needs a fix below or an entry",
         "# under 'resolved'. Approval is always required, even with no flags.",
         "#",

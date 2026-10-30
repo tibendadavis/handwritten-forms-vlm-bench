@@ -3,7 +3,7 @@ import datetime as dt
 import pytest
 from conftest import coc_uid
 
-from formbench.register_aggregate import (
+from formbench.register.aggregate import (
     aggregate,
     apply_decisions,
     classify_days,
@@ -12,7 +12,7 @@ from formbench.register_aggregate import (
     resolve_attribute_option,
     select_days,
 )
-from formbench.register_spec import DOSE_COLUMNS, load_spec
+from formbench.register.spec import DOSE_COLUMNS, load_spec
 
 GO_LIVE = dt.date(2025, 6, 2)
 TODAY = dt.date(2025, 6, 20)
