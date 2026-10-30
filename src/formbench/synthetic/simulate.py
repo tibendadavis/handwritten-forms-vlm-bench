@@ -19,9 +19,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from formbench.register_aggregate import iso_week, iso_week_days
-from formbench.register_spec import DOSE_COLUMNS, load_spec
-from formbench.register_state import RegisterState, page_identity
+from formbench.register.aggregate import iso_week, iso_week_days
+from formbench.register.spec import DOSE_COLUMNS, load_spec
+from formbench.weekly.state import RegisterState, page_identity
 
 # Visits of the EPI schedule (a typical national schedule): days after birth and doses given together.
 VISITS = [
@@ -288,7 +288,7 @@ def decisions_for(page_id: str, page: Page, date_style: str, written: dict[str, 
 def build_truth(sim: dict[str, Any], ds: dict[str, Any], cover: dict[str, Any], styles: list[str]) -> list[dict[str, Any]]:  # fmt: skip
     """Per week: photos with their true readings, reviewer decisions and the expected draft
     (values and corrections) from running the real pipeline on the true readings."""
-    from formbench.register_run import compute_draft, names
+    from formbench.weekly.draft import compute_draft, names
 
     spec, labels = load_spec(ds), names(ds)
     option = _intended_option(cover["facility_type"])
@@ -331,27 +331,9 @@ def _intended_option(written: str) -> str:
     return "Outreach/Mobile" if text.startswith("out") else "Fixed/Facility"
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate a synthetic handwritten register scenario.")  # fmt: skip
-    parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--weeks", type=int, default=3)
-    parser.add_argument("--pages", type=int, default=3, help="cohort pages in the register")
-    parser.add_argument("--go-live", type=dt.date.fromisoformat, default=dt.date(2026, 9, 7))
-    parser.add_argument(
-        "--quality", choices=["mixed", "scan", "good", "poor", "terrible"], default="mixed"
-    )
-    parser.add_argument(
-        "--messiness", choices=["mixed", "neat", "average", "bad", "terrible"], default="mixed"
-    )
-    parser.add_argument(
-        "--paper", choices=["a3", "a4"], default="a3", help="physical register size"
-    )
-    parser.add_argument("--name", help="scenario folder name (default seed-N)")
-    parser.add_argument("--metadata", type=Path, default=Path("schemas/dataset/metadata.json"))
-    parser.add_argument("--out", type=Path, default=Path("data/private/synthetic"))
-    args = parser.parse_args()
+def command(args: argparse.Namespace) -> None:
 
-    from formbench.register_render import render_scenario
+    from formbench.synthetic.render import render_scenario
 
     rng = random.Random(f"scenario-{args.seed}")
     sim = simulate(args.seed, args.weeks, args.pages, args.go_live)
@@ -383,7 +365,3 @@ def main() -> None:
     )
     photos = sum(len(w["photos"]) for w in truth)
     print(f"Scenario {folder.name}: {len(truth)} weeks, {photos} page photos -> {folder}/")
-
-
-if __name__ == "__main__":
-    main()

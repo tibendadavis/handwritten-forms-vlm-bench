@@ -3,17 +3,12 @@ import json
 
 import pytest
 
-from formbench.register_bench import (
-    flag_catch,
-    review_and_approve,
-    review_counts,
-    same_value,
-    score_transcription,
-    score_values,
-)
-from formbench.register_run import names
-from formbench.register_spec import load_spec
-from formbench.register_synth import build_truth, simulate
+from formbench.evaluation.bench import score_transcription, score_values
+from formbench.evaluation.review import flag_catch, review_and_approve, review_counts
+from formbench.evaluation.scoring import same_value
+from formbench.register.spec import load_spec
+from formbench.synthetic.simulate import build_truth, simulate
+from formbench.weekly.draft import names
 
 GO_LIVE = dt.date(2026, 9, 7)
 COVER = {"facility_name": "X", "mfl_code": "MFL-1", "facility_type": "Outrech",
@@ -109,26 +104,32 @@ def test_flags_on_misreads_count_as_caught_and_others_as_false_alarms():
     assert review_counts([changed], pages, truth, [])["false_alarms"] == 0
 
 
-def test_cli_accepts_every_option_main_uses():
-    from formbench.register_bench import build_parser
+def test_cli_accepts_every_option_the_commands_use():
+    from formbench.cli import build_parser
 
     args = build_parser().parse_args(
-        [
-            "--scenario",
-            "s",
-            "--engine",
-            "ollama:m",
-            "--max-side",
-            "4096",
-            "--think",
-        ]
+        ["bench", "--scenario", "s", "--engine", "ollama:m", "--max-side", "4096", "--think"]
     )
     assert (args.max_side, args.engine, args.think) == (4096, ["ollama:m"], True)
     assert args.rescore is None and args.out.name == "bench"
+    args = build_parser().parse_args(["eval", "--engine", "ollama:m", "--image", "p.jpg"])
+    assert args.truth is None and args.metadata.name == "metadata.json"
+    args = build_parser().parse_args(["compare", "a.json", "b.json"])
+    assert len(args.runs) == 2
+
+
+def test_engine_must_name_an_ollama_model():
+    from formbench.cli import model_tag
+
+    assert model_tag("ollama:hf.co/ibm-granite/granite-vision-4.1-4b-GGUF:Q8_0") == (
+        "hf.co/ibm-granite/granite-vision-4.1-4b-GGUF:Q8_0"
+    )
+    with pytest.raises(SystemExit):
+        model_tag("qwen3.5:4b")
 
 
 def test_summary_sums_counts_across_scenarios():
-    from formbench.register_bench import combine
+    from formbench.evaluation.bench import combine
 
     def run(cer_edits, chars, pages):
         counts = {"cer_edits": cer_edits, "cer_chars": chars, "pages": pages, "rows": 1,

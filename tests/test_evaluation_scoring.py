@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from formbench.register_scoring import quality_metrics, schema_pass, score_cover, score_page
+from formbench.evaluation.scoring import quality_metrics, schema_pass, score_cover, score_page
 
 TRUTH = {
     "cohort_month": "June",
@@ -83,7 +83,7 @@ def test_cover_text_scores():
 
 
 def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
-    from formbench.register_eval import differences
+    from formbench.evaluation.photo import differences
 
     pred = copy.deepcopy(TRUTH)
     pred["rows"][0]["opv1"] = "17-01-26"

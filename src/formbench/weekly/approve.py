@@ -12,19 +12,17 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from formbench.register_run import (
-    METADATA,
+from formbench.register.spec import load_spec
+from formbench.weekly.draft import (
     compute_draft,
     go_live_from_env,
     load_decisions,
     names,
 )
-from formbench.register_spec import load_spec
-from formbench.register_state import STATE_DIR, RegisterState
+from formbench.weekly.state import STATE_DIR, RegisterState
 
 
 class ApprovalRefused(ValueError):
@@ -124,28 +122,18 @@ def _confirm_in_terminal(draft: dict[str, Any]) -> bool:
     return input("Type APPROVE to write the DHIS2 payload (it will not be sent): ") == "APPROVE"
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Approve a reviewed register run.")
-    parser.add_argument("--run", type=Path, required=True)
-    parser.add_argument("--reviewer", required=True)
-    parser.add_argument("--metadata", type=Path, default=METADATA)
-    args = parser.parse_args()
+def command(args: argparse.Namespace) -> None:
 
-    load_dotenv(find_dotenv(usecwd=True))
     try:
         record = approve(
             args.run, args.reviewer, ds=json.loads(args.metadata.read_text()),
             go_live=go_live_from_env(), today=dt.date.today(), confirm=_confirm_in_terminal,
         )  # fmt: skip
     except ApprovalRefused as error:
-        raise SystemExit(f"register-approve: {error}") from None
+        raise SystemExit(f"formbench approve: {error}") from None
     print(
         f"Approved by {record['reviewer']}: {record['values']} values written to "
         f"{args.run / 'datavalueset.json'}"
         + (f" and {record['corrections']} corrections" if record["corrections"] else "")
         + ". Nothing was sent to DHIS2."
     )
-
-
-if __name__ == "__main__":
-    main()

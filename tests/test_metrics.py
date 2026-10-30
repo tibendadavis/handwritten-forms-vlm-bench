@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from formbench.textmetrics import (
+from formbench.metrics import (
     anls,
     anls_list,
     char_edits,

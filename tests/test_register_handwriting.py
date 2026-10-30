@@ -2,7 +2,7 @@ import datetime as dt
 
 import pytest
 
-from formbench.handwriting import Unreadable, completed_months, parse_age, parse_date
+from formbench.register.handwriting import Unreadable, completed_months, parse_age, parse_date
 
 
 @pytest.mark.parametrize(

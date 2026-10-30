@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from formbench.register_template import LETTERS, ROWS, TemplateError, detect_grid
+from formbench.synthetic.template import LETTERS, ROWS, TemplateError, detect_grid
 
 
 def draw_register(rows=ROWS):
