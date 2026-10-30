@@ -67,6 +67,7 @@ def command(args: argparse.Namespace) -> None:
 
     from formbench.cli import model_tag
     from formbench.evaluation.bench import read_scored_page, score_table
+    from formbench.evaluation.tracking import score_configs
     from formbench.register.spec import load_spec
 
     model = model_tag(args.engine)
@@ -74,14 +75,19 @@ def command(args: argparse.Namespace) -> None:
     spec = load_spec(json.loads(args.metadata.read_text()))
 
     langfuse = get_client()
+    try:
+        configs = score_configs(langfuse) if truth is not None else {}
+    except Exception:  # Langfuse not reachable: scores are still printed and saved
+        configs = {}
     settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side,
                 "think": args.think, "has_truth": truth is not None}  # fmt: skip
     try:
         with langfuse.start_as_current_span(name="register-eval", metadata=settings):
             langfuse.update_current_trace(name=f"register-eval {image.name}", metadata=settings, tags=["register-eval"])  # fmt: skip
-            result = read_scored_page(image, truth, model, spec, think=args.think, max_side=args.max_side)  # fmt: skip
+            result = read_scored_page(image, truth, model, spec, think=args.think,
+                                      max_side=args.max_side, configs=configs)  # fmt: skip
             for name, value in (result.get("scores") or {}).items():
-                langfuse.score_current_trace(name=name, value=float(value))
+                langfuse.score_current_trace(name=name, value=float(value), config_id=configs.get(name))  # fmt: skip
             trace_id = langfuse.get_current_trace_id()
     finally:
         langfuse.flush()

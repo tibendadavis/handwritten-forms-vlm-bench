@@ -140,3 +140,131 @@ def test_summary_sums_counts_across_scenarios():
     assert combined["cer"] == 0.1  # 10 / 100 characters, not the mean of two rates
     assert combined["value_accuracy_after_review"] == 0.5 and combined["flags_per_week"] == 2
     assert combined["latency_s_per_page"] == 5.0
+
+
+class FakeLangfuse:
+    """Runs an experiment in-process the way Langfuse does: task, then evaluators, per item."""
+
+    def __init__(self):
+        self.run_scores, self.datasets = [], {}
+
+    def get_dataset(self, name):
+        from types import SimpleNamespace
+
+        if name not in self.datasets:
+            raise LookupError(name)
+        return SimpleNamespace(items=list(self.datasets[name].values()))
+
+    def create_dataset(self, *, name, **_):
+        self.datasets[name] = {}
+
+    def create_dataset_item(self, *, dataset_name, id, input, expected_output, **_):
+        from types import SimpleNamespace
+
+        item = SimpleNamespace(id=id, input=input, expected_output=expected_output)
+        self.datasets[dataset_name][id] = item  # same id: updated, not duplicated
+
+    def update_current_trace(self, **_):
+        pass
+
+    def run_experiment(self, *, data, task, evaluators, **_):
+        from types import SimpleNamespace
+
+        results = []
+        for item in data:
+            output = task(item=item)
+            local = isinstance(item, dict)  # local items are dicts, dataset items objects
+            expected = item["expected_output"] if local else item.expected_output
+            for evaluator in evaluators:
+                evaluator(input=item["input"] if local else item.input, output=output, expected_output=expected)  # fmt: skip
+            results.append(SimpleNamespace(item=item, output=output))
+        return SimpleNamespace(item_results=results, dataset_run_id="run-1", dataset_run_url="url")
+
+    def create_score(self, **score):
+        self.run_scores.append(score)
+
+    def flush(self):
+        pass
+
+
+def perfect_reader(monkeypatch, answers):
+    import formbench.evaluation.bench as bench
+
+    def read_item(folder, item, model, **_):
+        if item["kind"] == "cover":
+            return {"cover": answers[item["photo"]], "json_valid": True, "errors": [], "latency_s": 1.0}  # fmt: skip
+        reading = json.loads(json.dumps(answers[item["photo"]]))
+        return {"reading": reading, "json_valid": True, "errors": [], "latency_s": 2.0}
+
+    monkeypatch.setattr(bench, "read_item", read_item)
+
+
+def test_a_scenario_run_scores_a_perfect_reader_perfectly(scenario, truth, ri_metadata, tmp_path, monkeypatch):  # fmt: skip
+    from formbench.evaluation.bench import load_items, run_bench
+
+    folder = tmp_path / "scenario"
+    folder.mkdir()
+    for n, week in enumerate(truth, 1):
+        for photo in week["photos"]:
+            photo["file"] = f"week-{n:02d}/page-{photo['page_id']}.jpg"
+    full = {"go_live": GO_LIVE.isoformat(), "cover": COVER, "intended_option": "Outreach/Mobile",
+            "edges": edges(scenario), "weeks": truth}  # fmt: skip
+    (folder / "truth.json").write_text(json.dumps(full))
+    items, _, _ = load_items(folder)
+    perfect_reader(monkeypatch, {i["input"]["photo"]: i["expected_output"] for i in items})
+    langfuse = FakeLangfuse()
+    run_bench(folder, "m", ri_metadata, langfuse=langfuse, configs={})
+    result = run_bench(folder, "m", ri_metadata, langfuse=langfuse, configs={})
+    assert len(langfuse.datasets["scenario"]) == len(items)  # re-syncing does not duplicate
+    m = result["metrics"]
+    assert m["value_accuracy_after_review"] == 1 and m["value_accuracy_before_review"] == 1
+    assert m["field_f1"] == 1 and m["tree_f1"] == 1 and m["cover_field_accuracy"] == 1
+    assert m["latency_s_per_page"] == 2.0 and result["page_count"] == len(items) - 1
+    assert {s["name"] for s in langfuse.run_scores} == set(m)
+    assert len(langfuse.run_scores) == 2 * len(m)
+    assert all(s["dataset_run_id"] == "run-1" for s in langfuse.run_scores)
+
+
+def test_a_photo_folder_needs_a_truth_file_per_photo(ri_metadata, tmp_path, monkeypatch):
+    from formbench.evaluation.bench import load_items, run_bench
+
+    reading = {"cohort_month": "June", "cohort_year": "2026",
+               "rows": [{"serial": "1", "sex": "F", "birth_date": "01-06-26", "opv1": "12-07-26"}]}  # fmt: skip
+    for name in ("a.jpg", "b.JPEG", "no-truth.png"):
+        (tmp_path / name).write_bytes(b"")
+    for name in ("a", "b"):
+        (tmp_path / f"{name}.truth.json").write_text(json.dumps(reading))
+    items, truth, skipped = load_items(tmp_path)
+    assert [i["input"]["photo"] for i in items] == ["a.jpg", "b.JPEG"] and truth is None
+    assert skipped == ["no-truth.png"]
+    perfect_reader(monkeypatch, {"a.jpg": reading, "b.JPEG": reading})
+    result = run_bench(tmp_path, "m", ri_metadata, langfuse=FakeLangfuse(), configs=None)
+    assert (
+        result["metrics"]["field_f1"] == 1
+        and "value_accuracy_after_review" not in result["metrics"]
+    )
+    assert result["skipped"] == ["no-truth.png"] and result["failed"] == []
+
+
+def test_score_definitions_are_created_once():
+    from types import SimpleNamespace
+
+    from formbench.evaluation.scoring import SCORES
+    from formbench.evaluation.tracking import score_configs
+
+    created = []
+
+    class ScoreConfigs:
+        def get(self, page, limit):
+            data = [SimpleNamespace(name="cer", id="c1", is_archived=False)]
+            return SimpleNamespace(data=data, meta=SimpleNamespace(total_pages=1))
+
+        def create(self, request):
+            created.append(request)
+            return SimpleNamespace(id=f"id-{request.name}")
+
+    configs = score_configs(SimpleNamespace(api=SimpleNamespace(score_configs=ScoreConfigs())))
+    assert configs["cer"] == "c1" and len(configs) == len(SCORES)
+    assert "cer" not in {r.name for r in created} and len(created) == len(SCORES) - 1
+    cer = next(r for r in created if r.name == "field_f1")
+    assert cer.max_value == 1 and cer.description

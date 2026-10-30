@@ -34,8 +34,6 @@ from formbench.weekly.state import (
     page_identity,
 )
 
-RUNS_DIR = Path("results/register")
-
 
 def go_live_from_env() -> dt.date:
     value = os.environ.get("REGISTER_GO_LIVE", "").strip()
