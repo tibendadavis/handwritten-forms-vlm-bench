@@ -12,7 +12,8 @@ from formbench.metrics import (
     levenshtein,
     match_lists,
     normalized_distance,
-    tree_accuracy,
+    to_tree,
+    tree_distance,
     word_edits,
 )
 
@@ -65,11 +66,9 @@ def test_f1():
     assert f1(0, 0, 0) is None
 
 
-def test_tree_accuracy():
-    truth = {"cohort": "June", "rows": [{"serial": "1", "opv1": "12-06-25"}]}
-    assert tree_accuracy(truth, truth) == 1.0
-    close = {"cohort": "June", "rows": [{"serial": "1", "opv1": "12-08-25"}]}
-    assert 0.9 < tree_accuracy(truth, close) < 1.0
-    moved = {"cohort": "June", "rows": [{"serial": "1", "opv2": "12-06-25"}]}
-    assert tree_accuracy(truth, moved) < tree_accuracy(truth, close)
-    assert tree_accuracy(truth, {}) == 0.0
+def test_tree_distance_charges_less_for_a_close_value_than_a_moved_one():
+    truth = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv1": "12-06-25"}]})
+    close = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv1": "12-08-25"}]})
+    moved = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv2": "12-06-25"}]})
+    assert tree_distance(truth, truth) == 0
+    assert 0 < tree_distance(truth, close) < tree_distance(truth, moved)

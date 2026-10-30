@@ -46,3 +46,7 @@ select = [
   "SIM",      # simplifications (SIM115)
   "B",        # likely bugs, e.g. mutable default arguments
 ]
+
+[tool.pytest.ini_options]
+# macOS system Python links LibreSSL; urllib3 warns about it on import. Not a test concern.
+filterwarnings = ["ignore:urllib3 v2 only supports OpenSSL"]

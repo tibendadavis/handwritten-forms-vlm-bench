@@ -133,10 +133,6 @@ def to_tree(value: Any, label: str = "<root>") -> _Node:
     return _Node(label, [_Node(str(value), leaf=True)])
 
 
-def _size(node: _Node) -> int:
-    return 1 + sum(_size(c) for c in node.children)
-
-
 def tree_distance(truth: _Node, predicted: _Node) -> float:
     """Tree edit distance; inserting or removing a node costs 1, relabelling a leaf costs its
     normalized edit distance (ANLS-style), relabelling a structural node costs 0 or 1."""
@@ -147,12 +143,3 @@ def tree_distance(truth: _Node, predicted: _Node) -> float:
         return 0.0 if a.label == b.label and a.leaf == b.leaf else 1.0
 
     return zss.distance(truth, predicted, lambda n: n.children, lambda n: 1, lambda n: 1, update)
-
-
-def tree_accuracy(truth: Any, predicted: Any) -> float:
-    """1 - TED(truth, predicted) / size(truth), floored at 0 (nTED, as used for Donut)."""
-    t, p = to_tree(truth), to_tree(predicted)
-    total = _size(t) - 1
-    return (
-        1.0 if total == 0 and _size(p) == 1 else max(0.0, 1 - tree_distance(t, p) / max(total, 1))
-    )

@@ -48,7 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", type=Path, default=Path("results/register/eval"))
 
     p = sub.add_parser("bench", help="benchmark models on a scenario, end to end")
-    p.add_argument("--scenario", type=Path, required=True, help="data/private/synthetic/<name>")
+    p.add_argument("--scenario", type=Path, required=True,
+                   help="a synthetic scenario (with truth.json), or a folder of photos each with "
+                        "a <photo>.truth.json next to it")  # fmt: skip
     p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
     p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
     p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
