@@ -68,9 +68,8 @@ tested code turns that into immunisation values. The model never sees or produce
   - The org unit is matched from the MFL Code by a read-only lookup. If no unit matches, the
     run warns and `orgUnit` is null.
 - **Privacy.**
-  - In tiles mode the photo is aligned to the blank template (ORB features, RANSAC, then ECC
-    refinement over the printed grid), and the model only receives the counting columns. Name,
-    guardian, phone and village never reach it.
+  - The model receives the whole page photo (tiles mode, which cut out personal columns,
+    was removed on 2026-10-30; see below).
   - Schemas forbid extra keys, so personal data cannot come back through the model output
     either.
 
@@ -79,13 +78,12 @@ tested code turns that into immunisation values. The model never sees or produce
 - **Completeness depends on capture.** The worker must photograph every cohort page that got
   new entries that week, since a skipped page cannot be detected from images alone. The
   review page lists which pages contributed so the reviewer can confirm.
-- **Two reading modes are kept and benchmarked.**
-  - **tiles:** aligned 4-row strips, which work at a readable resolution and keep personal
-    data out.
-  - **full:** the whole photo, one call; the fallback when alignment fails.
+- **One reading mode: the whole page.** Tiles (aligned 4-row strips) were benchmarked first
+  and removed on 2026-10-30: users photograph the whole register, and full-page accuracy is
+  what needs measuring. Removing them also removed template alignment from the reader.
 - **The benchmark measures integrity, not just OCR.** An oracle reviewer fixes only what was
   flagged. Any value still wrong after approval is an error that would have reached DHIS2
-  unflagged; `value_accuracy` reports this.
+  unflagged; `value_accuracy_after_review` reports this.
 - **Synthetic data comes first.** Scenarios are rendered on the real blank register page with
   handwriting fonts and photo effects, with injected edge cases. Real hand-filled, photographed
   pages will replace them as they become available.
