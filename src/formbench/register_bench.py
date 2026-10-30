@@ -25,13 +25,13 @@ from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 from rich.table import Table
 
+from formbench.files import slugify
 from formbench.handwriting import Unreadable
 from formbench.register_aggregate import parse_cohort, resolve_attribute_option
 from formbench.register_run import compute_draft, names
 from formbench.register_scoring import _blank, quality_metrics, same_value, score_cover, score_page
 from formbench.register_spec import DOSE_COLUMNS, load_spec
 from formbench.register_state import RegisterState, page_identity
-from formbench.schema_gen import slugify
 
 DOSES = [c.key for c in DOSE_COLUMNS]
 CHILDREN = "Children vaccinated"

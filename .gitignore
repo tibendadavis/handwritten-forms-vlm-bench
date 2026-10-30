@@ -221,7 +221,6 @@ __marimo__/
 
 .env
 data/private/
-forms/
 results/
 schemas/dataset/
 data/fonts/
