@@ -8,4 +8,5 @@ evaluation/    readings vs truth: scores, benchmark runs, Langfuse datasets and 
 weekly/        the weekly workflow: draft, human review, approval, dataValueSet (never sent)
 synthetic/     synthetic handwritten registers with known answers
 cli.py         the `formbench` command
+files.py       file names and JSON files
 """

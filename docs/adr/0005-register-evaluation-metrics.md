@@ -18,8 +18,9 @@ mode, because users photograph the whole (A3-sized) register page.
 ## Decision
 
 Every page is scored with three groups of metrics. They are recorded per page, on that page's
-Langfuse span, and per run on the trace. Implementation: `textmetrics.py` (generic) and
-`register_scoring.py` (register-specific).
+Langfuse trace, and per run on the Langfuse dataset run ([ADR 0006](0006-benchmark-runs-as-langfuse-experiments.md)).
+Implementation: `metrics.py` (generic) and `evaluation/scoring.py` (register-specific), which
+also lists every score with its meaning (`formbench scores`).
 
 **How text is compared.**
 
@@ -48,7 +49,9 @@ Langfuse span, and per run on the trace. Implementation: `textmetrics.py` (gener
 The integrity scores from ADR 0004 stay alongside these, unchanged:
 
 - review workload: `flags_per_week`, `edge_recall`, `misread_flag_recall`, `false_alarms`
-- `value_accuracy`: approved daily values after review
+- `value_accuracy_after_review`: approved daily values after review
+- `value_accuracy_before_review` (added 2026-10-30): daily values counted from one page's
+  reading vs from its truth, with no review, so a single real photo has a DHIS2-level score
 
 ## Consequences
 
@@ -67,6 +70,7 @@ The integrity scores from ADR 0004 stay alongside these, unchanged:
     column.
 - **Interpretations to confirm.** "GAnTED" and "ANLSL" are implemented as described above
   (grouped, ANLS-weighted nTED; ANLS over lists). If the data owner's reference defines them
-  differently, only `register_scoring.py` changes.
+  differently, only `evaluation/scoring.py` changes.
 - **Real photos need a truth file.** For a real photo, a page reading corrected by hand is the
-  truth file for `register-eval`.
+  truth file for `formbench eval`, and a folder of such photos can be benchmarked like a
+  scenario.
