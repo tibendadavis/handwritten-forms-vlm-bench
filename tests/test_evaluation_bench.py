@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from formbench.evaluation.bench import score_transcription, score_values
+from formbench.evaluation.bench import _values
 from formbench.evaluation.review import flag_catch, review_and_approve, review_counts
-from formbench.evaluation.scoring import same_value
+from formbench.evaluation.scoring import compare_values, same_value, score_page
 from formbench.register.spec import load_spec
 from formbench.synthetic.simulate import build_truth, simulate
 from formbench.weekly.draft import names
@@ -37,17 +37,17 @@ def test_same_value_normalizes_dates_sex_and_text():
     assert not same_value(None, "05-09-26", "opv1")
 
 
-def test_transcription_counts():
+def test_row_and_cell_counts():
     truth = {"cohort_month": "June", "cohort_year": "2026",
              "rows": [{"serial": "1", "sex": "F", "birth_date": "01-06-26", "card_number": "7", "opv1": "12-07-26", "opv2": None},
-                      {"serial": "2", "sex": "M", "birth_date": "02-06-26", "card_number": "8", "opv1": None}]}  # fmt: skip
+                      {"serial": "2", "sex": "M", "birth_date": "02-06-26", "card_number": "8", "opv1": "13-07-26"}]}  # fmt: skip
     pred = {"cohort_month": "6", "cohort_year": "26",
             "rows": [{"serial": "1", "sex": "F", "birth_date": "1/6/26", "card_number": "7", "opv1": "12-07-26", "opv2": "19-07-26"},
                      {"serial": "9", "sex": "M"}]}  # fmt: skip
-    c = score_transcription(pred, truth)
+    c = score_page(pred, truth, json_valid=True)
     assert (c["rows"], c["rows_found"], c["rows_invented"]) == (2, 1, 1)
-    assert (c["date_cells"], c["date_correct"], c["blank_filled"]) == (1, 1, 1)
-    assert c["birth_correct"] == 1 and c["cohort_correct"] == 1
+    assert (c["written_cells"], c["written_missed"]) == (2, 1)  # row 2 was not found
+    assert c["blank_filled"] == 1  # opv2 made up in row 1
 
 
 def value(day, count, de="OPV"):
@@ -56,9 +56,8 @@ def value(day, count, de="OPV"):
 
 def test_value_scores():
     v = value
-    s = score_values([v("1", 2), v("2", 1)], [v("1", 2), v("3", 4)])
-    assert s == {"values": 3, "values_exact": 1, "values_missing": 1, "values_extra": 1,
-                 "abs_error": 5, "children": 0, "children_exact": 0}  # fmt: skip
+    s = compare_values(_values([v("1", 2), v("2", 1)]), _values([v("1", 2), v("3", 4)]))
+    assert s == {"values": 3, "values_exact": 1, "values_missing": 1, "values_extra": 1}
 
 
 def test_a_perfect_reader_scores_perfectly(scenario, truth, ri_metadata, tmp_path):
@@ -81,7 +80,7 @@ def test_a_perfect_reader_scores_perfectly(scenario, truth, ri_metadata, tmp_pat
         alarms += review["false_alarms"]
         got = approved["values"] + approved["corrections"]
         want = week["expected"]["values"] + week["expected"]["corrections"]
-        scores = score_values(got, want)
+        scores = compare_values(_values(got), _values(want))
         assert scores["values_exact"] == scores["values"]
     catch = flag_catch(drafts, edges(scenario), cover_flag_expected=True)
     assert catch["edges_caught"] == catch["edges"] and alarms == 0
@@ -131,17 +130,13 @@ def test_engine_must_name_an_ollama_model():
 def test_summary_sums_counts_across_scenarios():
     from formbench.evaluation.bench import combine
 
-    def run(cer_edits, chars, pages):
-        counts = {"cer_edits": cer_edits, "cer_chars": chars, "pages": pages, "rows": 1,
-                  "rows_found": 1, "rows_invented": 0, "date_cells": 1, "date_correct": 1,
-                  "blank_cells": 1, "blank_filled": 0, "written_cells": 1, "written_missed": 0,
-                  "birth": 1, "birth_correct": 1, "sex_correct": 1, "card_correct": 1,
-                  "cohort_correct": pages, "blocking_flags": 0, "edges": 0, "edges_caught": 0,
-                  "misreads": 0, "misreads_flagged": 0, "false_alarms": 0, "values": 1,
-                  "values_exact": 1, "values_missing": 0, "values_extra": 0, "abs_error": 0,
-                  "children": 0, "children_exact": 0}  # fmt: skip
-        weeks = [{"pages": [{"json_valid": True}] * pages}]
-        return {"settings": {"engine": "ollama:m"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
+    def run(cer_edits, chars, pages, values_exact):
+        counts = {"cer_edits": cer_edits, "cer_chars": chars, "pages": pages, "values": 10,
+                  "values_exact": values_exact, "blocking_flags": 4}  # fmt: skip
+        weeks = [{"pages": [{"json_valid": True}] * pages}] * 2
+        return {"settings": {"engine": "ollama:m", "scenario": "s"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
 
-    combined = combine([run(1, 10, 1), run(9, 90, 3)])["ollama:m"]
-    assert combined["cer"] == 0.1 and combined["pages"] == 4 and combined["scenarios"] == 2
+    combined = combine([run(1, 10, 1, 10), run(9, 90, 3, 0)])["ollama:m"]
+    assert combined["cer"] == 0.1  # 10 / 100 characters, not the mean of two rates
+    assert combined["value_accuracy_after_review"] == 0.5 and combined["flags_per_week"] == 2
+    assert combined["latency_s_per_page"] == 5.0
