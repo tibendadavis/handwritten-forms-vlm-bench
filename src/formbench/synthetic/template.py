@@ -104,7 +104,7 @@ def build_template(pdf: Path = REGISTER_PDF) -> tuple[np.ndarray, dict[str, Any]
 def load_template(folder: Path = TEMPLATE_DIR) -> tuple[np.ndarray, dict[str, Any]]:
     image = cv2.imread(str(folder / "template.png"), cv2.IMREAD_GRAYSCALE)
     if image is None:
-        raise SystemExit(f"No register template in {folder}; run `uv run register-template`.")
+        raise SystemExit(f"No register template in {folder}; run `uv run formbench template`.")
     return image, json.loads((folder / "template.json").read_text())
 
 
@@ -121,16 +121,12 @@ def overlay(image: np.ndarray, layout: dict[str, Any]) -> np.ndarray:
     return out
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Build the register template from the blank PDF.")
-    parser.add_argument("--pdf", type=Path, default=REGISTER_PDF)
-    parser.add_argument("--out", type=Path, default=TEMPLATE_DIR)
-    args = parser.parse_args()
+def command(args: argparse.Namespace) -> None:
 
     try:
         image, layout = build_template(args.pdf)
     except TemplateError as error:
-        raise SystemExit(f"register-template: {error}") from None
+        raise SystemExit(f"formbench template: {error}") from None
     args.out.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(args.out / "template.png"), image)
     cv2.imwrite(str(args.out / "template-overlay.jpg"), overlay(image, layout))
@@ -138,7 +134,3 @@ def main() -> None:
     print(
         f"register template: {len(layout['rows'])} rows x {len(layout['columns'])} columns -> {args.out}/"
     )
-
-
-if __name__ == "__main__":
-    main()

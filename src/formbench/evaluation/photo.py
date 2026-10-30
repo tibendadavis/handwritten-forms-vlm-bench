@@ -1,8 +1,8 @@
 """Test one register photo with one model and see exactly where it goes wrong.
 
-    register-eval --scenario data/private/synthetic/<name> --photo week-02/page-....jpg --engine ollama:<tag>
-    register-eval --image photo.jpg --truth truth.json --engine ollama:<tag>
-    register-eval --image photo.jpg --engine ollama:<tag>          # no truth: transcription only
+    formbench eval --scenario data/private/synthetic/<name> --photo week-02/page-....jpg --engine ollama:<tag>
+    formbench eval --image photo.jpg --truth truth.json --engine ollama:<tag>
+    formbench eval --image photo.jpg --engine ollama:<tag>          # no truth: reading only
 
 A truth file is a page reading: {"cohort_month", "cohort_year", "rows": [{serial, card_number,
 sex, birth_date, age, bcg, polio, opv0, ...}]}. For a real photo, run once without --truth,
@@ -12,20 +12,16 @@ correct the saved reading by hand, and use it as the truth from then on.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import json
 from pathlib import Path
 from typing import Any
 
-from dotenv import find_dotenv, load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from formbench.files import slugify
-from formbench.register_schema import ROW_FIELDS
-from formbench.register_scoring import same_value
-
-OUT_DIR = Path("results/register/eval")
+from formbench.evaluation.scoring import same_value
+from formbench.files import slugify, stamp, write_json
+from formbench.register.prompts import ROW_FIELDS
 
 
 def differences(predicted: dict[str, Any], truth: dict[str, Any]) -> list[tuple[str, str, Any, Any]]:  # fmt: skip
@@ -48,43 +44,34 @@ def differences(predicted: dict[str, Any], truth: dict[str, Any]) -> list[tuple[
 def _truth_for(args: argparse.Namespace) -> tuple[Path, dict[str, Any] | None]:
     if args.scenario:
         if not args.photo:
-            raise SystemExit("register-eval: --scenario needs --photo (path inside the scenario)")
+            raise SystemExit("formbench eval: --scenario needs --photo (path inside the scenario)")
         truth = json.loads((args.scenario / "truth.json").read_text())
         for week in truth["weeks"]:
             for photo in week["photos"]:
                 if photo["file"] == args.photo:
                     return args.scenario / photo["file"], photo["reading"]
         files = [p["file"] for w in truth["weeks"] for p in w["photos"]]
-        raise SystemExit(f"register-eval: {args.photo} not in scenario; photos: {', '.join(files)}")
+        raise SystemExit(
+            f"formbench eval: {args.photo} not in scenario; photos: {', '.join(files)}"
+        )
     if not args.image:
         raise SystemExit(
-            "register-eval: give --image (and optionally --truth) or --scenario and --photo"
+            "formbench eval: give --image (and optionally --truth) or --scenario and --photo"
         )
     truth = json.loads(args.truth.read_text()) if args.truth else None
     return args.image, truth
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Test one register photo with one model.")
-    parser.add_argument("--engine", required=True, help="ollama:<model-tag>")
-    parser.add_argument("--image", type=Path, help="a register page photo")
-    parser.add_argument("--truth", type=Path, help="true page reading (JSON) for --image")
-    parser.add_argument("--scenario", type=Path, help="synthetic scenario folder")
-    parser.add_argument("--photo", help="photo path inside the scenario, e.g. week-02/page-x.jpg")
-    parser.add_argument("--max-side", type=int, help="longest image side sent to the model (default 3072)")  # fmt: skip
-    parser.add_argument("--think", action="store_true")
-    parser.add_argument("--out", type=Path, default=OUT_DIR)
-    args = parser.parse_args()
+def command(args: argparse.Namespace) -> None:
 
-    kind, _, model = args.engine.partition(":")
-    if kind != "ollama" or not model:
-        raise SystemExit("register-eval: --engine must be 'ollama:<model-tag>'")
+    from formbench.cli import model_tag
+
+    model = model_tag(args.engine)
     image, truth = _truth_for(args)
-    load_dotenv(find_dotenv(usecwd=True))
 
     from langfuse import get_client
 
-    from formbench.register_bench import read_scored_page
+    from formbench.evaluation.bench import read_scored_page
 
     langfuse = get_client()
     settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side,
@@ -120,15 +107,9 @@ def main() -> None:
             scores.add_row(name, shown)
         console.print(scores)
 
-    args.out.mkdir(parents=True, exist_ok=True)
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = args.out / f"{stamp}_{slugify(image.stem)}_{slugify(args.engine)}.json"
+    path = args.out / f"{stamp()}_{slugify(image.stem)}_{slugify(args.engine)}.json"
     record = {"settings": settings, "trace_id": trace_id, "latency_s": result["latency_s"],
               "json_valid": result["json_valid"], "errors": result["errors"], "scores": result.get("scores"),
               "reading": reading, "raw": result["raw"]}  # fmt: skip
-    path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+    write_json(path, record)
     console.print(f"Saved to {path}" + ("" if truth else " (its 'reading' can be corrected into a truth file)"))  # fmt: skip
-
-
-if __name__ == "__main__":
-    main()

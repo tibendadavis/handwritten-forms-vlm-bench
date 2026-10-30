@@ -17,11 +17,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from formbench.handwriting import Unreadable, parse_date
-from formbench.register_aggregate import parse_cohort
-from formbench.register_schema import ROW_FIELDS
-from formbench.register_spec import DOSE_COLUMNS
-from formbench.textmetrics import (
+from formbench.metrics import (
     anls,
     anls_list,
     char_edits,
@@ -31,6 +27,10 @@ from formbench.textmetrics import (
     tree_distance,
     word_edits,
 )
+from formbench.register.aggregate import parse_cohort
+from formbench.register.handwriting import Unreadable, parse_date
+from formbench.register.prompts import ROW_FIELDS
+from formbench.register.spec import DOSE_COLUMNS
 
 DATE_KEYS = ("birth_date", *(c.key for c in DOSE_COLUMNS))
 KEYS = tuple(ROW_FIELDS)

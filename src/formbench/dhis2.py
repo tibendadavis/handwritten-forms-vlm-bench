@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -69,16 +70,7 @@ def fetch_metadata(dataset: str, out: Path | None = None) -> Path:
     return path
 
 
-def main() -> None:
-    import argparse
-
-    from dotenv import find_dotenv, load_dotenv
-
-    parser = argparse.ArgumentParser(description="Download DHIS2 data set metadata (read-only).")
-    parser.add_argument("--dataset", required=True, help="DHIS2 data set UID")
-    parser.add_argument("--out", type=Path, help="folder (default schemas/<data set name>)")
-    args = parser.parse_args()
-    load_dotenv(find_dotenv(usecwd=True))
+def command(args: argparse.Namespace) -> None:
     path = fetch_metadata(args.dataset, args.out)
     ds = json.loads(path.read_text())
     print(f"{ds['name']}: {len(ds['dataSetElements'])} data elements -> {path}")

@@ -1,4 +1,4 @@
-from formbench.register_extract import clean_rows
+from formbench.register.reader import clean_rows
 
 
 def test_clean_rows_drops_extras_and_empty_rows():
@@ -20,8 +20,8 @@ def test_a_timed_out_call_is_an_invalid_reading_not_a_crash(monkeypatch):
     import openai
 
     import formbench.vlm as vlm
-    from formbench.register_extract import _call
-    from formbench.register_schema import page_schema
+    from formbench.register.prompts import page_schema
+    from formbench.register.reader import _call
 
     def stuck(*args, **kwargs):
         raise openai.APITimeoutError(request=httpx.Request("POST", "http://localhost"))

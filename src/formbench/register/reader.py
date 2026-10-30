@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from formbench.register_schema import (
+from formbench.register.prompts import (
     REGISTER_PROMPT_VERSION,
     ROW_FIELDS,
     cover_prompt,
