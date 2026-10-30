@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import base64
 import html
-from collections import defaultdict
+import os
 from pathlib import Path
 from typing import Any
 
@@ -55,9 +54,12 @@ def _src_link(source: list[str]) -> str:
     return f'<a href="#row-{_e(page)}-{_e(serial)}">{_e(page)} #{_e(serial)} {_e(label)}</a>'
 
 
-def _img(path: Path) -> str:
-    data = base64.b64encode(path.read_bytes()).decode()
-    return f'<img alt="{_e(path.stem)}" src="data:image/jpeg;base64,{data}">'
+def _photo_link(run_dir: Path, photo: str | None) -> str:
+    """A link to the original photo; the photo itself is not copied into the review file."""
+    if not photo:
+        return ""
+    target = os.path.relpath(Path(photo).resolve(), run_dir.resolve())
+    return f'<p><a href="{_e(target)}">Open the page photo</a></p>'
 
 
 def render_html(run_dir: Path, draft: dict[str, Any], readings: dict[str, Any]) -> str:
@@ -110,22 +112,17 @@ def render_html(run_dir: Path, draft: dict[str, Any], readings: dict[str, Any]) 
 
     parts.append("<h2>Rows as read</h2><p class=muted>Only the counting columns are shown; names and contacts are never read.</p>")  # fmt: skip
     keys = [c.key for c in DOSE_COLUMNS]
+    photos = {p["page_id"]: p.get("photo") for p in readings.get("page_info", [])}
     for page in readings["pages"]:
         pid = page["page_id"]
         parts.append(f"<h3>{_e(pid)} · cohort {_e(page.get('cohort_month'))} {_e(page.get('cohort_year'))}</h3>")  # fmt: skip
-        by_strip: dict[Any, list[dict[str, Any]]] = defaultdict(list)
+        parts.append(_photo_link(run_dir, photos.get(pid)))
+        parts.append("<div class=wrap><table><tr><th>Serial</th><th>Sex</th><th>Birth</th><th>Age</th>" + "".join(f"<th>{_e(k)}</th>" for k in keys) + "</tr>")  # fmt: skip
         for row in page["rows"]:
-            by_strip[row.get("_strip")].append(row)
-        strips = sorted((run_dir / "strips").glob(f"{pid}-*.jpg"))
-        for index, rows in sorted(by_strip.items(), key=lambda kv: (kv[0] is None, kv[0] or 0)):
-            shown = [strips[index]] if index is not None and index < len(strips) else strips
-            parts.extend(_img(p) for p in shown)
-            parts.append("<div class=wrap><table><tr><th>Serial</th><th>Sex</th><th>Birth</th><th>Age</th>" + "".join(f"<th>{_e(k)}</th>" for k in keys) + "</tr>")  # fmt: skip
-            for row in rows:
-                anchor = f"row-{_e(pid)}-{_e(row.get('serial'))}"
-                cells = "".join(f"<td>{_e(row.get(k))}</td>" for k in keys)
-                parts.append(f"<tr id='{anchor}'><td>{_e(row.get('serial'))}</td><td>{_e(row.get('sex'))}</td><td>{_e(row.get('birth_date'))}</td><td>{_e(row.get('age'))}</td>{cells}</tr>")  # fmt: skip
-            parts.append("</table></div>")
+            anchor = f"row-{_e(pid)}-{_e(row.get('serial'))}"
+            cells = "".join(f"<td>{_e(row.get(k))}</td>" for k in keys)
+            parts.append(f"<tr id='{anchor}'><td>{_e(row.get('serial'))}</td><td>{_e(row.get('sex'))}</td><td>{_e(row.get('birth_date'))}</td><td>{_e(row.get('age'))}</td>{cells}</tr>")  # fmt: skip
+        parts.append("</table></div>")
     parts.append("</body></html>")
     return "\n".join(parts)
 

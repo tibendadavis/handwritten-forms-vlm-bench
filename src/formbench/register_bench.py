@@ -339,18 +339,17 @@ def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[s
     return {"metrics": metrics, "counts": counts}
 
 
-def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, mode: str, template: Any,
-                     layout: dict[str, Any], think: bool = False, max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
+def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, think: bool = False,
+                     max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
     """Read one page inside its own Langfuse span; with a truth, score it on that span."""
     from langfuse import get_client
 
     from formbench.register_extract import FULL_MAX_SIDE, read_page
 
     langfuse = get_client()
-    with langfuse.start_as_current_span(name=f"page {photo.name}", metadata={"mode": mode}) as span:
+    with langfuse.start_as_current_span(name=f"page {photo.name}") as span:
         start = time.perf_counter()
-        result = read_page(photo, model, mode=mode, template=template, layout=layout, think=think,
-                           max_side=max_side or FULL_MAX_SIDE)  # fmt: skip
+        result = read_page(photo, model, think=think, max_side=max_side or FULL_MAX_SIDE)
         result["latency_s"] = round(time.perf_counter() - start, 1)
         if truth is not None:
             result["scores"] = quality_metrics(score_page(result["reading"], truth, result["json_valid"]))  # fmt: skip
@@ -361,14 +360,12 @@ def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, m
     return result
 
 
-def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: bool = False,
+def run_bench(scenario: Path, model: str, ds: dict[str, Any], think: bool = False,
               max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
     from formbench.register_extract import read_cover
-    from formbench.register_template import load_template
 
     truth = json.loads((scenario / "truth.json").read_text())
     spec, labels = load_spec(ds), names(ds)
-    template, layout = load_template()
     go_live = dt.date.fromisoformat(truth["go_live"])
     state_root = Path(tempfile.mkdtemp(prefix="register-bench-"))
     start = time.perf_counter()
@@ -378,11 +375,11 @@ def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: 
         for week in truth["weeks"]:
             pages, readings = [], []
             for photo in week["photos"]:
-                result = read_scored_page(scenario / photo["file"], photo["reading"], model, mode=mode,
-                                          template=template, layout=layout, think=think, max_side=max_side)  # fmt: skip
+                result = read_scored_page(scenario / photo["file"], photo["reading"], model,
+                                          think=think, max_side=max_side)  # fmt: skip
                 pid = page_identity(result["reading"], Path(photo["file"]).stem)
                 pages.append({"page_id": pid, **result["reading"]})
-                readings.append({"file": photo["file"], "page_id": pid, "notes": result["notes"],
+                readings.append({"file": photo["file"], "page_id": pid,
                                  "json_valid": result["json_valid"], "reading": result["reading"]})  # fmt: skip
             first, approved = review_and_approve(
                 pages, week["photos"], cover["cover"], spec, labels, week,
@@ -397,14 +394,14 @@ def run_bench(scenario: Path, model: str, mode: str, ds: dict[str, Any], think: 
     return {**scored, "latency_s": round(latency, 1), "cover": cover["cover"], "weeks": weeks_out}
 
 
-def _table(title: str, rows: list[tuple[str, str, dict[str, Any]]]) -> Table:
+def _table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> Table:
     table = Table(title=title)
     table.add_column("Metric")
-    for engine, mode, _ in rows:
-        table.add_column(f"{engine.split(':', 1)[-1][-28:]}\n{mode}", justify="right")
-    for name in rows[0][2]:
+    for engine, _ in rows:
+        table.add_column(engine.split(":", 1)[-1][-28:], justify="right")
+    for name in rows[0][1]:
         cells = []
-        for _, _, metrics in rows:
+        for _, metrics in rows:
             value = metrics[name]
             percent = isinstance(value, float) and name.endswith(
                 ("accuracy", "rate", "recall", "valid")
@@ -420,7 +417,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--scenario", type=Path, help="data/private/synthetic/<name> (not needed with --summary)"
     )
     parser.add_argument("--engine", action="append", help="ollama:<tag>; repeatable")
-    parser.add_argument("--mode", action="append", choices=["tiles", "full"], help="repeatable")
     parser.add_argument("--think", action="store_true")
     parser.add_argument(
         "--rescore", type=Path, nargs="+", help="re-score saved run files, no model"
@@ -428,7 +424,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--metadata", type=Path, default=Path("schemas/dataset/metadata.json"))
     parser.add_argument("--out", type=Path, default=Path("results/register/bench"))
     parser.add_argument(
-        "--max-side", type=int, help="longest image side sent in full mode (default 3072)"
+        "--max-side", type=int, help="longest image side sent to the model (default 3072)"
     )
     parser.add_argument(
         "--summary", type=Path, nargs="+", help="combine saved runs across scenarios"
@@ -436,12 +432,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def combine(runs: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
-    """Per (engine, mode): counts summed over scenarios, then rates taken once (not an
-    average of averages)."""
-    groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per engine: counts summed over scenarios, then rates taken once (not an average of
+    averages)."""
+    groups: dict[str, list[dict[str, Any]]] = {}
     for run in runs:
-        groups.setdefault((run["settings"]["engine"], run["settings"]["mode"]), []).append(run)
+        groups.setdefault(run["settings"]["engine"], []).append(run)
     out = {}
     for key, group in groups.items():
         counts = _sum([r["counts"] for r in group])
@@ -464,9 +460,7 @@ def main() -> None:
     rows = []
     if args.summary:
         runs = [json.loads(p.read_text()) for p in args.summary]
-        rows = [
-            (engine, mode, metrics) for (engine, mode), metrics in sorted(combine(runs).items())
-        ]
+        rows = sorted(combine(runs).items())
         console.print(_table(f"Combined over {len(runs)} run(s)", rows))
         return
     if not args.scenario:
@@ -480,7 +474,7 @@ def main() -> None:
                 score_run(run["weeks"], truth, ds, latency, run.get("cover")), latency_s=latency
             )
             path.write_text(json.dumps(run, indent=2, ensure_ascii=False, default=str) + "\n")
-            rows.append((run["settings"]["engine"], run["settings"]["mode"], run["metrics"]))
+            rows.append((run["settings"]["engine"], run["metrics"]))
         console.print(_table(f"Register benchmark (re-scored): {args.scenario.name}", rows))
         return
     if not args.engine:
@@ -494,26 +488,25 @@ def main() -> None:
         kind, _, model = engine.partition(":")
         if kind != "ollama" or not model:
             raise SystemExit("register-bench: --engine must be 'ollama:<model-tag>'")
-        for mode in args.mode or ["full"]:
-            settings = {"scenario": args.scenario.name, "engine": engine, "mode": mode, "think": args.think,
-                        "max_side": args.max_side}  # fmt: skip
-            console.print(f"Running {engine} ({mode}) on {args.scenario.name}...")
-            try:
-                with langfuse.start_as_current_span(name="register-bench", metadata=settings):
-                    langfuse.update_current_trace(name=f"register-bench {args.scenario.name}", metadata=settings, tags=["register-bench", mode])  # fmt: skip
-                    result = run_bench(
-                        args.scenario, model, mode, ds, think=args.think, max_side=args.max_side
-                    )
-                    for name, value in result["metrics"].items():
-                        if value is not None:
-                            langfuse.score_current_trace(name=name, value=float(value))
-                    trace_id = langfuse.get_current_trace_id()
-            finally:
-                langfuse.flush()
-            stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            path = args.out / f"{stamp}_{args.scenario.name}_{slugify(engine)}_{mode}.json"
-            path.write_text(json.dumps({"settings": settings, "trace_id": trace_id, **result}, indent=2, ensure_ascii=False, default=str) + "\n")  # fmt: skip
-            rows.append((engine, mode, result["metrics"]))
+        settings = {"scenario": args.scenario.name, "engine": engine, "think": args.think,
+                    "max_side": args.max_side}  # fmt: skip
+        console.print(f"Running {engine} on {args.scenario.name}...")
+        try:
+            with langfuse.start_as_current_span(name="register-bench", metadata=settings):
+                langfuse.update_current_trace(name=f"register-bench {args.scenario.name}", metadata=settings, tags=["register-bench"])  # fmt: skip
+                result = run_bench(
+                    args.scenario, model, ds, think=args.think, max_side=args.max_side
+                )
+                for name, value in result["metrics"].items():
+                    if value is not None:
+                        langfuse.score_current_trace(name=name, value=float(value))
+                trace_id = langfuse.get_current_trace_id()
+        finally:
+            langfuse.flush()
+        stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = args.out / f"{stamp}_{args.scenario.name}_{slugify(engine)}.json"
+        path.write_text(json.dumps({"settings": settings, "trace_id": trace_id, **result}, indent=2, ensure_ascii=False, default=str) + "\n")  # fmt: skip
+        rows.append((engine, result["metrics"]))
     console.print(_table(f"Register benchmark: {args.scenario.name}", rows))
     console.print(f"Runs saved under {args.out}/")
 
