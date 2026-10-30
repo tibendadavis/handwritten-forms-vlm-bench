@@ -2,7 +2,8 @@ import copy
 
 import pytest
 
-from formbench.evaluation.scoring import quality_metrics, schema_pass, score_cover, score_page
+from formbench.evaluation.scoring import SCORES, metrics, schema_pass, score_cover, score_page
+from formbench.register.spec import load_spec
 
 TRUTH = {
     "cohort_month": "June",
@@ -17,7 +18,7 @@ TRUTH = {
 
 
 def scores(predicted, json_valid=True):
-    return quality_metrics(score_page(predicted, TRUTH, json_valid))
+    return metrics(score_page(predicted, TRUTH, json_valid))
 
 
 def test_perfect_page_scores_perfectly():
@@ -78,7 +79,7 @@ def test_schema_pass_needs_valid_json_and_dhis2_formats():
 def test_cover_text_scores():
     truth = {"facility_name": "Riverside Health Centre", "mfl_code": "MFL-1234"}
     counts = score_cover({"facility_name": "Riverside Helth Centre", "mfl_code": "MFL-1234"}, truth)  # fmt: skip
-    s = quality_metrics(counts)
+    s = metrics(counts)
     assert 0 < s["cer"] < 0.05 and s["cover_field_accuracy"] == 0.5
 
 
@@ -92,3 +93,21 @@ def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
     assert ("1", "opv1", "17-07-26", "17-01-26") in diffs
     assert ("2", "(whole row)", "present", "missing") in diffs
     assert ("9", "(whole row)", "absent", "invented") in diffs
+
+
+def test_daily_values_before_review(ri_metadata):
+    spec = load_spec(ri_metadata)
+    perfect = metrics(score_page(copy.deepcopy(TRUTH), TRUTH, True, spec))
+    assert perfect["value_accuracy_before_review"] == 1
+    pred = copy.deepcopy(TRUTH)
+    pred["rows"][0]["penta1"], pred["rows"][0]["pcv1"] = None, "17-07-26"  # filed one column off
+    s = metrics(score_page(pred, TRUTH, True, spec))
+    assert 0 < s["value_accuracy_before_review"] < 1
+    assert "value_accuracy_before_review" not in metrics(score_page(pred, TRUTH, True))
+
+
+def test_every_score_is_described_once():
+    names = [s.name for s in SCORES]
+    assert len(names) == len(set(names))
+    assert all(s.description and s.group in ("decide", "reading", "review", "cost") for s in SCORES)
+    assert set(scores(copy.deepcopy(TRUTH))) <= set(names)

@@ -1,13 +1,9 @@
-"""Benchmark the register pipeline on a synthetic scenario, end to end.
+"""Benchmark models on a scenario (photos + truth.json), end to end.
 
-Each week of the scenario is read by the model, turned into a draft, reviewed by an oracle
-reviewer who fixes only what the system flagged (using the truth, like a careful health
-worker with the register and the child's card in hand), and approved. Scores, in layers:
-
-- transcription: rows found or invented, cell accuracy, blanks filled or missed;
-- review: blocking flags per week (reviewer workload), injected problems caught, false alarms;
-- values: the approved daily values against the expected ones. Mismatches here are errors
-  that reached the payload unflagged, which is what data integrity is about.
+Each week of the scenario is read by the model, turned into a draft, reviewed by the oracle
+reviewer (evaluation/review.py) who fixes only what the system flagged, and approved. The
+approved daily values are compared with the expected ones: a mismatch there is an error that
+reached the DHIS2 payload unflagged, which is what data integrity is about.
 """
 
 from __future__ import annotations
@@ -26,153 +22,56 @@ from rich.table import Table
 
 from formbench.evaluation.review import flag_catch, review_and_approve, review_counts
 from formbench.evaluation.scoring import (
-    _blank,
-    quality_metrics,
-    same_value,
+    SCORES,
+    Score,
+    compare_values,
+    metrics,
     score_cover,
     score_page,
+    sum_counts,
 )
 from formbench.files import slugify, stamp, write_json
-from formbench.register.aggregate import parse_cohort, resolve_attribute_option
-from formbench.register.handwriting import Unreadable
-from formbench.register.spec import DOSE_COLUMNS, load_spec
+from formbench.register.aggregate import resolve_attribute_option
+from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
 
-DOSES = [c.key for c in DOSE_COLUMNS]
-CHILDREN = "Children vaccinated"
+GROUPS = {
+    "decide": "What DHIS2 gets: rank models by these",
+    "reading": "How it reads: explains the result",
+    "review": "Reviewer workload",
+    "cost": "Cost",
+}
 
 
-def score_transcription(predicted: dict[str, Any], truth: dict[str, Any]) -> dict[str, Any]:
-    """Counts for one page photo; summed over pages before rates are taken."""
-    truth_rows = {r["serial"]: r for r in truth["rows"]}
-    pred_rows: dict[str, dict[str, Any]] = {}
-    invented = 0
-    for row in predicted["rows"]:
-        serial = str(row.get("serial") or "").strip()
-        if serial in truth_rows and serial not in pred_rows:
-            pred_rows[serial] = row
-        else:
-            invented += 1
-    counts = {"rows": len(truth_rows), "rows_found": len(pred_rows), "rows_invented": invented,
-              "date_cells": 0, "date_correct": 0, "blank_cells": 0, "blank_filled": 0,
-              "written_cells": 0, "written_missed": 0, "birth": 0, "birth_correct": 0,
-              "sex_correct": 0, "card_correct": 0}  # fmt: skip
-    for serial, t in truth_rows.items():
-        p = pred_rows.get(serial)
-        if p is None:
-            continue
-        counts["birth"] += not _blank(t.get("birth_date"))
-        counts["birth_correct"] += not _blank(t.get("birth_date")) and same_value(t["birth_date"], p.get("birth_date"), "birth_date")  # fmt: skip
-        counts["sex_correct"] += same_value(t.get("sex"), p.get("sex"), "sex")
-        counts["card_correct"] += same_value(t.get("card_number"), p.get("card_number"), "card_number")  # fmt: skip
-        for key in DOSES:
-            tv, pv = t.get(key), p.get(key)
-            if _blank(tv):
-                counts["blank_cells"] += 1
-                counts["blank_filled"] += not _blank(pv)
-            else:
-                counts["written_cells"] += 1
-                counts["written_missed"] += _blank(pv)
-                counts["date_cells"] += 1
-                counts["date_correct"] += same_value(tv, pv, key)
-    try:
-        counts["cohort_correct"] = int(parse_cohort(predicted.get("cohort_month"), predicted.get("cohort_year"))
-                                       == parse_cohort(truth["cohort_month"], truth["cohort_year"]))  # fmt: skip
-    except Unreadable:
-        counts["cohort_correct"] = 0
-    return counts
-
-
-def _key(v: dict[str, Any]) -> tuple[str, str, str]:
-    return v["day"], v["data_element"], v["coc"]
-
-
-def score_values(produced: list[dict[str, Any]], expected: list[dict[str, Any]]) -> dict[str, int]:
-    got = {_key(v): v["value"] for v in produced}
-    want = {_key(v): v["value"] for v in expected}
-    children = {_key(v) for v in expected + produced if v["data_element_name"] == CHILDREN}
-    keys = set(got) | set(want)
-    return {
-        "values": len(keys),
-        "values_exact": sum(got.get(k) == want.get(k) for k in keys),
-        "values_missing": sum(k not in got for k in want),
-        "values_extra": sum(k not in want for k in got),
-        "abs_error": sum(abs(got.get(k, 0) - want.get(k, 0)) for k in keys),
-        "children": len(children),
-        "children_exact": sum(got.get(k) == want.get(k) for k in children),
-    }
-
-
-def _sum(dicts: list[dict[str, int]]) -> dict[str, int]:
-    out: dict[str, int] = {}
-    for d in dicts:
-        for k, v in d.items():
-            out[k] = out.get(k, 0) + v
-    return out
-
-
-def _rate(a: int, b: int) -> float | None:
-    return round(a / b, 4) if b else None
-
-
-def summarize(counts: dict[str, int], weeks: int, pages: int, latency: float, valid: int) -> dict[str, Any]:  # fmt: skip
-    return {
-        "json_valid": _rate(valid, pages),
-        "row_recall": _rate(counts["rows_found"], counts["rows"]),
-        "rows_invented": counts["rows_invented"],
-        "date_cell_accuracy": _rate(counts["date_correct"], counts["date_cells"]),
-        "blank_hallucination_rate": _rate(counts["blank_filled"], counts["blank_cells"]),
-        "written_omission_rate": _rate(counts["written_missed"], counts["written_cells"]),
-        "birth_date_accuracy": _rate(counts["birth_correct"], counts["birth"]),
-        "sex_accuracy": _rate(counts["sex_correct"], counts["rows_found"]),
-        "card_accuracy": _rate(counts["card_correct"], counts["rows_found"]),
-        "cohort_accuracy": _rate(counts["cohort_correct"], pages),
-        "flags_per_week": round(counts["blocking_flags"] / weeks, 2),
-        "edge_recall": _rate(counts["edges_caught"], counts["edges"]),
-        "misread_flag_recall": _rate(counts["misreads_flagged"], counts["misreads"]),
-        "false_alarms": counts["false_alarms"],
-        "value_accuracy": _rate(counts["values_exact"], counts["values"]),
-        "values_missing": counts["values_missing"],
-        "values_extra": counts["values_extra"],
-        "value_abs_error": counts["abs_error"],
-        "children_accuracy": _rate(counts["children_exact"], counts["children"]),
-        "latency_s_per_page": round(latency / max(pages, 1), 1),
-    }
+def _values(rows: list[dict[str, Any]]) -> dict[tuple[str, str, str], int]:
+    return {(v["day"], v["data_element"], v["coc"]): v["value"] for v in rows}
 
 
 def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[str, Any],
               latency: float, cover: dict[str, Any] | None = None) -> dict[str, Any]:  # fmt: skip
     """All scores from what a run recorded, so saved runs can be re-scored without a model."""
     spec = load_spec(ds)
-    page_counts, value_counts, review, drafts = [], [], [], []
-    pages_total = valid = 0
+    counts, drafts = [], []
     for week, out in zip(truth["weeks"], weeks_out):
         pages = [{"page_id": r["page_id"], **r["reading"]} for r in out["pages"]]
         for reading, photo in zip(out["pages"], week["photos"]):
-            pages_total += 1
-            valid += int(reading["json_valid"])
-            page_counts.append(score_transcription(reading["reading"], photo["reading"]))
-            page_counts.append(
-                score_page(reading["reading"], photo["reading"], reading["json_valid"])
-            )
-        first = {"flags": out["first_flags"],
-                 "unresolved_blocking": [f["id"] for f in out["first_flags"] if f["blocking"] and not f["resolved"]]}  # fmt: skip
-        drafts.append(first)
-        review.append(review_counts(out["first_flags"], pages, week["photos"], truth["edges"]))
-        value_counts.append(score_values(out["approved_values"] + out["approved_corrections"],
-                                         week["expected"]["values"] + week["expected"]["corrections"]))  # fmt: skip
+            counts.append(score_page(reading["reading"], photo["reading"], reading["json_valid"], spec))  # fmt: skip
+        drafts.append({"flags": out["first_flags"],
+                       "unresolved_blocking": [f["id"] for f in out["first_flags"] if f["blocking"] and not f["resolved"]]})  # fmt: skip
+        counts.append(review_counts(out["first_flags"], pages, week["photos"], truth["edges"]))
+        counts.append(compare_values(_values(out["approved_values"] + out["approved_corrections"]),
+                                     _values(week["expected"]["values"] + week["expected"]["corrections"])))  # fmt: skip
     cover_expected = resolve_attribute_option(truth["cover"]["facility_type"], spec)[1] is not None
-    counts = {**_sum(page_counts), **_sum(value_counts), **_sum(review),
-              **flag_catch(drafts, truth["edges"], cover_expected)}  # fmt: skip
+    counts.append(flag_catch(drafts, truth["edges"], cover_expected))
     if cover is not None:
-        counts = _sum([counts, score_cover(cover, truth["cover"])])
-    metrics = {**quality_metrics(counts), **summarize(counts, len(truth["weeks"]), pages_total, latency, valid)}  # fmt: skip
-    return {"metrics": metrics, "counts": counts}
+        counts.append(score_cover(cover, truth["cover"]))
+    total = sum_counts(counts)
+    return {"metrics": metrics(total, weeks=len(truth["weeks"]), latency=latency), "counts": total}
 
 
-def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, think: bool = False,
-                     max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
+def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, spec: RegisterSpec, *,
+                     think: bool = False, max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
     """Read one page inside its own Langfuse span; with a truth, score it on that span."""
     from langfuse import get_client
 
@@ -184,11 +83,10 @@ def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, *, t
         result = read_page(photo, model, think=think, max_side=max_side or FULL_MAX_SIDE)
         result["latency_s"] = round(time.perf_counter() - start, 1)
         if truth is not None:
-            result["scores"] = quality_metrics(score_page(result["reading"], truth, result["json_valid"]))  # fmt: skip
+            counts = score_page(result["reading"], truth, result["json_valid"], spec)
+            result["scores"] = metrics(counts, latency=result["latency_s"])
             for name, value in result["scores"].items():
-                if value is not None:
-                    span.score(name=name, value=float(value))
-            span.score(name="latency_s", value=result["latency_s"])
+                span.score(name=name, value=float(value))
     return result
 
 
@@ -207,7 +105,7 @@ def run_bench(scenario: Path, model: str, ds: dict[str, Any], think: bool = Fals
         for week in truth["weeks"]:
             pages, readings = [], []
             for photo in week["photos"]:
-                result = read_scored_page(scenario / photo["file"], photo["reading"], model,
+                result = read_scored_page(scenario / photo["file"], photo["reading"], model, spec,
                                           think=think, max_side=max_side)  # fmt: skip
                 pid = page_identity(result["reading"], Path(photo["file"]).stem)
                 pages.append({"page_id": pid, **result["reading"]})
@@ -226,20 +124,29 @@ def run_bench(scenario: Path, model: str, ds: dict[str, Any], think: bool = Fals
     return {**scored, "latency_s": round(latency, 1), "cover": cover["cover"], "weeks": weeks_out}
 
 
-def _table(title: str, rows: list[tuple[str, dict[str, Any]]]) -> Table:
+def _cell(score: Score, value: Any) -> str:
+    if value is None:
+        return "–"
+    if score.percent:
+        return f"{value:.1%}"
+    return str(value) if isinstance(value, int) else f"{value:.4g}"
+
+
+def score_table(title: str, columns: list[tuple[str, dict[str, Any]]]) -> Table:
+    """Scores grouped by what they are for; ↑ higher is better, ↓ lower is better."""
     table = Table(title=title)
-    table.add_column("Metric")
-    for engine, _ in rows:
-        table.add_column(engine.split(":", 1)[-1][-28:], justify="right")
-    for name in rows[0][1]:
-        cells = []
-        for _, metrics in rows:
-            value = metrics[name]
-            percent = isinstance(value, float) and name.endswith(
-                ("accuracy", "rate", "recall", "valid")
-            )
-            cells.append("n/a" if value is None else (f"{value:.1%}" if percent else str(value)))
-        table.add_row(name, *cells)
+    table.add_column("Score")
+    for label, _ in columns:
+        table.add_column(label.split(":", 1)[-1][-28:], justify="right")
+    for group, heading in GROUPS.items():
+        scores = [s for s in SCORES if s.group == group and any(s.name in m for _, m in columns)]
+        if not scores:
+            continue
+        table.add_row(f"[bold]{heading}[/bold]", end_section=False)
+        for s in scores:
+            arrow = {True: " ↑", False: " ↓"}.get(s.higher_is_better, "")
+            table.add_row(f"  {s.name}{arrow}", *(_cell(s, m.get(s.name)) for _, m in columns))
+        table.add_section()
     return table
 
 
@@ -249,21 +156,36 @@ def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     groups: dict[str, list[dict[str, Any]]] = {}
     for run in runs:
         groups.setdefault(run["settings"]["engine"], []).append(run)
-    out = {}
-    for key, group in groups.items():
-        counts = _sum([r["counts"] for r in group])
-        pages = sum(len(w["pages"]) for r in group for w in r["weeks"])
-        weeks = sum(len(r["weeks"]) for r in group)
-        valid = sum(int(p["json_valid"]) for r in group for w in r["weeks"] for p in w["pages"])
-        latency = sum(r.get("latency_s") or 0 for r in group)
-        out[key] = {**quality_metrics(counts), **summarize(counts, weeks, pages, latency, valid),
-                    "scenarios": len(group), "pages": pages}  # fmt: skip
-    return out
+    return {
+        engine: metrics(
+            sum_counts([r["counts"] for r in group]),
+            weeks=sum(len(r["weeks"]) for r in group),
+            latency=sum(r.get("latency_s") or 0 for r in group),
+        )
+        for engine, group in groups.items()
+    }
 
 
 def compare(args: argparse.Namespace) -> None:
     runs = [json.loads(p.read_text()) for p in args.runs]
-    Console().print(_table(f"Combined over {len(runs)} run(s)", sorted(combine(runs).items())))
+    scenarios = sorted({r["settings"]["scenario"] for r in runs})
+    pages = sum(len(w["pages"]) for r in runs for w in r["weeks"])
+    title = f"{len(scenarios)} scenario(s), {pages} page photos: {', '.join(scenarios)}"
+    Console().print(score_table(title, sorted(combine(runs).items())))
+
+
+def explain(args: argparse.Namespace) -> None:
+    """Print what every score means, grouped as in the benchmark tables."""
+    table = Table(title="Scores (↑ higher is better, ↓ lower is better)", show_lines=False)
+    table.add_column("Score")
+    table.add_column("What it means")
+    for group, heading in GROUPS.items():
+        table.add_row(f"[bold]{heading}[/bold]", "")
+        for s in (s for s in SCORES if s.group == group):
+            arrow = {True: " ↑", False: " ↓"}.get(s.higher_is_better, "")
+            table.add_row(f"  {s.name}{arrow}", s.description)
+        table.add_section()
+    Console().print(table)
 
 
 def command(args: argparse.Namespace) -> None:
@@ -282,7 +204,7 @@ def command(args: argparse.Namespace) -> None:
             )
             write_json(path, run)
             rows.append((run["settings"]["engine"], run["metrics"]))
-        console.print(_table(f"Register benchmark (re-scored): {args.scenario.name}", rows))
+        console.print(score_table(f"Register benchmark (re-scored): {args.scenario.name}", rows))
         return
     if not args.engine:
         raise SystemExit("formbench bench: give --engine (or --rescore saved run files)")
@@ -310,5 +232,5 @@ def command(args: argparse.Namespace) -> None:
         path = args.out / f"{stamp()}_{args.scenario.name}_{slugify(engine)}.json"
         write_json(path, {"settings": settings, "trace_id": trace_id, **result})
         rows.append((engine, result["metrics"]))
-    console.print(_table(f"Register benchmark: {args.scenario.name}", rows))
+    console.print(score_table(f"Register benchmark: {args.scenario.name}", rows))
     console.print(f"Runs saved under {args.out}/")
