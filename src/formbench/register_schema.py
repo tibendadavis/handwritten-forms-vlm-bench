@@ -85,25 +85,6 @@ def page_prompt() -> str:
     )
 
 
-def rows_prompt() -> str:
-    return (
-        "This is a strip cut from a handwritten immunisation register (R-06): a few child "
-        "rows under a header. Each column is labelled at the top with the exact JSON key its "
-        "cells belong to (and its register letter); grey gaps separate the columns. Put each "
-        "handwritten value under the key of the column it is written in. Column C holds the "
-        "birth date on top and the age below. Return rows with these keys:\n"
-        f"{_columns()}\n\n{_RULES}"
-    )
-
-
-def cohort_prompt() -> str:
-    return (
-        "This is the top of a handwritten immunisation register page. "
-        "Return the Month and Year written next to the title, exactly as written; "
-        "null if empty. Output only the JSON object."
-    )
-
-
 def cover_prompt() -> str:
     return (
         "This is the cover of a handwritten immunisation register. Copy each field exactly as "

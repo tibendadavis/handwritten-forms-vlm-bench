@@ -118,19 +118,12 @@ def test_cli_accepts_every_option_main_uses():
             "s",
             "--engine",
             "ollama:m",
-            "--mode",
-            "full",
             "--max-side",
             "4096",
             "--think",
         ]
     )
-    assert (args.max_side, args.mode, args.engine, args.think) == (
-        4096,
-        ["full"],
-        ["ollama:m"],
-        True,
-    )
+    assert (args.max_side, args.engine, args.think) == (4096, ["ollama:m"], True)
     assert args.rescore is None and args.out.name == "bench"
 
 
@@ -147,7 +140,7 @@ def test_summary_sums_counts_across_scenarios():
                   "values_exact": 1, "values_missing": 0, "values_extra": 0, "abs_error": 0,
                   "children": 0, "children_exact": 0}  # fmt: skip
         weeks = [{"pages": [{"json_valid": True}] * pages}]
-        return {"settings": {"engine": "ollama:m", "mode": "full"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
+        return {"settings": {"engine": "ollama:m"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
 
-    combined = combine([run(1, 10, 1), run(9, 90, 3)])[("ollama:m", "full")]
+    combined = combine([run(1, 10, 1), run(9, 90, 3)])["ollama:m"]
     assert combined["cer"] == 0.1 and combined["pages"] == 4 and combined["scenarios"] == 2

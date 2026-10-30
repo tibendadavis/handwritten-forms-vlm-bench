@@ -4,7 +4,6 @@ from formbench.register_schema import (
     cover_schema,
     page_prompt,
     page_schema,
-    rows_prompt,
     rows_schema,
 )
 from formbench.register_spec import DOSE_COLUMNS
@@ -36,6 +35,6 @@ def test_personal_data_cannot_be_returned():
 def test_every_dose_column_is_requested():
     row = rows_schema()["properties"]["rows"]["items"]
     assert {c.key for c in DOSE_COLUMNS} <= set(row["required"])
-    for prompt in (page_prompt(), rows_prompt()):
-        assert all(f"- {c.key}: column {c.letter} " in prompt for c in DOSE_COLUMNS)
-        assert "Do not transcribe child names" in prompt
+    prompt = page_prompt()
+    assert all(f"- {c.key}: column {c.letter} " in prompt for c in DOSE_COLUMNS)
+    assert "Do not transcribe child names" in prompt

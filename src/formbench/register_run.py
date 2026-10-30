@@ -145,11 +145,7 @@ def compute_draft(
         "corrections": _value_rows(fixes, after.provenance if after else {}, labels, previous),
         "flags": flag_rows,
         "unresolved_blocking": [f["id"] for f in flag_rows if f["blocking"] and not f["resolved"]],
-        # Readings with decisions applied: what gets stored as approved.
-        "pages": [
-            {**p, "rows": [{k: v for k, v in r.items() if k != "_strip"} for r in p["rows"]]}
-            for p in fixed
-        ],
+        "pages": fixed,  # readings with decisions applied: what gets stored as approved
     }
 
 
@@ -175,7 +171,6 @@ def main() -> None:
     parser.add_argument("--cover", type=Path, required=True, help="photo of the register cover")
     parser.add_argument("--pages", type=Path, nargs="+", required=True, help="cohort page photos")
     parser.add_argument("--engine", required=True, help="ollama:<model-tag>")
-    parser.add_argument("--mode", choices=["full", "tiles"], default="full")
     parser.add_argument("--think", action="store_true")
     parser.add_argument("--metadata", type=Path, default=METADATA)
     parser.add_argument("--out", type=Path, default=RUNS_DIR)
@@ -192,16 +187,14 @@ def main() -> None:
 
     from langfuse import get_client
 
-    from formbench.register_extract import read_cover, read_page, tiles
+    from formbench.register_extract import read_cover, read_page
     from formbench.register_review import write_review
-    from formbench.register_template import load_template
 
-    template, layout = load_template()
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = args.out / f"{args.week}_{stamp}"
-    (run_dir / "strips").mkdir(parents=True, exist_ok=True)
+    run_dir.mkdir(parents=True, exist_ok=True)
     langfuse = get_client()
-    settings = {"week": args.week, "engine": args.engine, "mode": args.mode, "think": args.think}
+    settings = {"week": args.week, "engine": args.engine, "think": args.think}
     try:
         with langfuse.start_as_current_span(name="register-run", metadata=settings):
             langfuse.update_current_trace(name=f"register {args.week}", metadata=settings, tags=["register"])  # fmt: skip
@@ -209,15 +202,11 @@ def main() -> None:
             cover = read_cover(args.cover, model, think=args.think)
             pages, page_info = [], []
             for photo in args.pages:
-                result = read_page(photo, model, mode=args.mode, template=template, layout=layout, think=args.think)  # fmt: skip
+                result = read_page(photo, model, think=args.think)
                 pid = page_identity(result["reading"], photo.stem)
                 pages.append({"page_id": pid, **result["reading"]})
-                page_info.append({"page_id": pid, "photo": str(photo), "mode": result["mode"],
-                                  "json_valid": result["json_valid"], "errors": result["errors"],
-                                  "notes": result["notes"], "raw": result["raw"]})  # fmt: skip
-                if result["aligned"] is not None:  # only the counting columns are saved
-                    for i, (strip, _) in enumerate(tiles(result["aligned"], layout)):
-                        strip.save(run_dir / "strips" / f"{pid}-{i}.jpg", quality=85)
+                page_info.append({"page_id": pid, "photo": str(photo), "json_valid": result["json_valid"],
+                                  "errors": result["errors"], "raw": result["raw"]})  # fmt: skip
             latency = round(time.perf_counter() - start, 2)
     finally:
         langfuse.flush()
@@ -248,10 +237,6 @@ def main() -> None:
 def load_decisions(run_dir: Path) -> dict[str, Any]:
     path = run_dir / "decisions.yaml"
     return (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
-
-
-def strips_for(run_dir: Path, page_id: str) -> list[Path]:
-    return sorted((run_dir / "strips").glob(f"{page_id}-*.jpg"))
 
 
 if __name__ == "__main__":
