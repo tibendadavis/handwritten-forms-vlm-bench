@@ -73,11 +73,13 @@ def test_reread_differences_and_corrections(setup):
 
 def test_review_files(setup, tmp_path):
     d = draft(setup, [apr(row("1", birth=None, opv1="12-06-25"), row("2", opv1="12-06-25"))])
-    readings = {"pages": [apr(row("1", birth=None, opv1="12-06-25"), row("2", opv1="12-06-25"))]}
+    readings = {"pages": [apr(row("1", birth=None, opv1="12-06-25"), row("2", opv1="12-06-25"))],
+                "page_info": [{"page_id": "2025-04-s1", "photo": str(tmp_path / "photos" / "p1.jpg")}]}  # fmt: skip
     write_review(tmp_path, d, readings, ["Fixed/Facility", "Outreach/Mobile"])
     page_html = (tmp_path / "review.html").read_text()
     assert "must be resolved before approval" in page_html
     assert "id='row-2025-04-s1-2'" in page_html and 'href="#row-2025-04-s1-2"' in page_html
+    assert 'href="photos/p1.jpg"' in page_html  # linked, never embedded
     decisions = (tmp_path / "decisions.yaml").read_text()
     assert "birth_date_missing:2025-04-s1:1" in decisions and "Outreach/Mobile" in decisions
     (tmp_path / "decisions.yaml").write_text("attribute_option: Fixed/Facility\n")

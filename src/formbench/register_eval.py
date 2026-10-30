@@ -71,8 +71,7 @@ def main() -> None:
     parser.add_argument("--truth", type=Path, help="true page reading (JSON) for --image")
     parser.add_argument("--scenario", type=Path, help="synthetic scenario folder")
     parser.add_argument("--photo", help="photo path inside the scenario, e.g. week-02/page-x.jpg")
-    parser.add_argument("--mode", choices=["full", "tiles"], default="full")
-    parser.add_argument("--max-side", type=int, help="longest image side sent in full mode (default 3072)")  # fmt: skip
+    parser.add_argument("--max-side", type=int, help="longest image side sent to the model (default 3072)")  # fmt: skip
     parser.add_argument("--think", action="store_true")
     parser.add_argument("--out", type=Path, default=OUT_DIR)
     args = parser.parse_args()
@@ -86,17 +85,14 @@ def main() -> None:
     from langfuse import get_client
 
     from formbench.register_bench import read_scored_page
-    from formbench.register_template import load_template
 
-    template, layout = load_template()
     langfuse = get_client()
-    settings = {"engine": args.engine, "image": str(image), "mode": args.mode, "max_side": args.max_side,
+    settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side,
                 "think": args.think, "has_truth": truth is not None}  # fmt: skip
     try:
         with langfuse.start_as_current_span(name="register-eval", metadata=settings):
-            langfuse.update_current_trace(name=f"register-eval {image.name}", metadata=settings, tags=["register-eval", args.mode])  # fmt: skip
-            result = read_scored_page(image, truth, model, mode=args.mode, template=template,
-                                      layout=layout, think=args.think, max_side=args.max_side)  # fmt: skip
+            langfuse.update_current_trace(name=f"register-eval {image.name}", metadata=settings, tags=["register-eval"])  # fmt: skip
+            result = read_scored_page(image, truth, model, think=args.think, max_side=args.max_side)
             for name, value in (result.get("scores") or {}).items():
                 if value is not None:
                     langfuse.score_current_trace(name=name, value=float(value))
@@ -106,10 +102,10 @@ def main() -> None:
 
     console = Console()
     reading = result["reading"]
-    console.print(f"[bold]{image.name}[/bold] with {model} ({result['mode']}): "
+    console.print(f"[bold]{image.name}[/bold] with {model}: "
                   f"{len(reading['rows'])} rows read in {result['latency_s']} s; JSON valid: {result['json_valid']}")  # fmt: skip
-    for note in result["notes"]:
-        console.print(f"[yellow]{note}[/yellow]")
+    for error in result["errors"]:
+        console.print(f"[yellow]{error}[/yellow]")
     if truth is not None:
         diffs = differences(reading, truth)
         table = Table(title=f"{len(diffs)} cell(s) read differently from the truth")
@@ -128,7 +124,7 @@ def main() -> None:
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     path = args.out / f"{stamp}_{slugify(image.stem)}_{slugify(args.engine)}.json"
     record = {"settings": settings, "trace_id": trace_id, "latency_s": result["latency_s"],
-              "json_valid": result["json_valid"], "notes": result["notes"], "scores": result.get("scores"),
+              "json_valid": result["json_valid"], "errors": result["errors"], "scores": result.get("scores"),
               "reading": reading, "raw": result["raw"]}  # fmt: skip
     path.write_text(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
     console.print(f"Saved to {path}" + ("" if truth else " (its 'reading' can be corrected into a truth file)"))  # fmt: skip
