@@ -7,21 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Project scaffold (`formbench` package, uv-managed, pinned dependencies)
-- Pre-commit hooks: gitleaks secret scanning, ruff lint and format
-- GitHub Actions CI: lint, tests, secrets scan on every push
-- Smoke test: single traced VLM call via Ollama's OpenAI-compatible API, recorded in self-hosted Langfuse
-- `smoke` console script (`uv run smoke IMAGE MODEL`); `.env` is loaded automatically via python-dotenv
-- Schema generator: DHIS2 data set metadata -> extraction JSON Schema (unique keys, nullable, no extra fields) and mapping to dataElement/categoryOptionCombo UIDs; metadata snapshot for offline, repeatable regeneration
-- `make-form`: printable one-page A4 form (PDF/PNG, 300 DPI) for a seeded selection of data elements, with corner alignment markers, `layout.json` cell boxes, and the subset schema and mapping for exactly the printed fields
-- Seeded ground truth (`truth.json`: made-up facility, valid period for the periodType, counts with a configurable blank ratio) and a printable `values_sheet.pdf` for filling forms by hand
-- Photo alignment to the form template via the four corner markers (OpenCV perspective warp)
-- Tesseract template baseline: per-cell crop, empty-cell detection by ink ratio, digit-whitelisted OCR with per-field confidence
-- VLM extraction through Ollama's OpenAI-compatible API with a strict JSON Schema response format, temperature 0, fixed seed, thinking off by default (`--think` to enable), output validated with jsonschema
-- Field-level scoring: `json_valid`, `field_accuracy`, `numeric_accuracy`, `hallucination_rate`, `omission_rate`
-- `extract` CLI: per-field result table, metric summary with latency, run files in `results/runs/`, Langfuse trace with metadata and scores
-- ADRs 0002 (template Tesseract baseline) and 0003 (VLM structured output and thinking); README "Try it" walkthrough
-- CI installs Tesseract so OCR tests run there
+- Project scaffold (`formbench` package, uv-managed, pinned dependencies), pre-commit hooks (gitleaks, ruff), GitHub Actions CI (lint, tests, secrets scan)
+- One `formbench` command: `eval`, `bench`, `compare`, `scores`, `synth`, `template`, `metadata`, `run`, `approve`; `.env` is loaded automatically
+- VLM calls through Ollama's OpenAI-compatible API with a strict JSON Schema response format, temperature 0, fixed seed, thinking off by default (`--think`), capped output and no silent retries; every call traced in Langfuse
+- Read-only DHIS2 client: data set metadata download (`formbench metadata`) and org unit lookup by code
+- register: column-to-DHIS2 mapping from metadata, a page schema that cannot return names or contacts, strict parsing of handwritten dates and ages, whole-page reading
+- Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
+- Weekly workflow: draft with flags, `review.html` and `decisions.yaml`, approval by a named person, `datavalueset.json` (never posted), corrections as full totals for already approved weeks
+- Synthetic registers on the real blank page: simulated children and visits over several weeks, planted edge cases, one to three writers from neat to terrible, pencil and faded ink, scan to terrible photos; same seed, same photos
+- Scores, defined once with their meaning, range and direction (`formbench scores`): values correct after and before review, misread flag recall, field and Tree F1, CER, WER, ANLS, ANLSL, field accuracy, GAnTED, STP rate, schema pass rate, omission and hallucination rates, review workload, latency
+- `formbench eval`: one photo, one model, every wrong cell and the scores
+- `formbench bench`: a synthetic scenario (through review and approval) or a folder of photos with truth files, for one or more models; `--rescore` saved runs; `formbench compare` combines runs per model
+- Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
+- ADRs 0003 to 0006
 
-### Fixed
-- `.env.example` uses `LANGFUSE_HOST`, the variable the installed Langfuse SDK reads
+### Removed
+- Tesseract OCR baseline and its CI dependency
+- Generic printable forms (`make-form`), marker alignment and the per-field `extract` command, with their example schemas
+- Tiles reading mode and template alignment: whole-page photos only
+- `smoke` and the separate `register-*` console scripts (now `formbench` subcommands)

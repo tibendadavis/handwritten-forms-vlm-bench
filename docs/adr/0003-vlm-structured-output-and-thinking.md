@@ -38,11 +38,12 @@ passes `response_format` through and records the generation.
 - Send the subset JSON Schema as a **strict `json_schema` `response_format`**, with the
   `$schema` header removed. The prompt also lists every `key: description`, so models that
   ignore constraints still know the keys.
-- **Thinking is off by default** (`reasoning_effort="none"`). `extract --think` omits the
+- **Thinking is off by default** (`reasoning_effort="none"`). `--think` omits the
   parameter, which leaves the model's default (thinking on for thinking models). The setting
   is recorded in the run file and the Langfuse trace metadata.
-- Decoding is fixed: `temperature=0`, `seed=42`. The photo is downscaled to at most 2048 px on
-  its long side before encoding. `PROMPT_VERSION` is bumped whenever the prompt changes.
+- Decoding is fixed: `temperature=0`, `seed=42`. The photo is downscaled before encoding (register pages:
+  at most 3072 px on the long side). `REGISTER_PROMPT_VERSION` is bumped whenever the prompt
+  changes.
 - **Never trust the constraint alone.** Replies are parsed defensively (code fences stripped,
   first JSON object extracted) and validated with `jsonschema` (Draft 2020-12).
   - Unparseable output scores as `json_valid = 0` with every field `null`.

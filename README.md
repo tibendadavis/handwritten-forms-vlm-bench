@@ -1,132 +1,157 @@
 # handwritten-forms-vlm-bench
 
-**Can a small, phone-sized vision-language model reliably read handwritten forms, and know when it can't?**
+**Which vision model reads your handwritten form well enough to trust, and how would you know?**
 
-A reproducible benchmark for extracting structured data from photos of handwritten forms with vision-language models (VLMs), from sub-1B on-device models to 30B+ server models. Every extracted field carries a confidence flag, and nothing is imported without human review.
+A benchmark for reading photos of handwritten forms with local vision-language models (VLMs) and turning them into [DHIS2](https://dhis2.org) aggregate data. It measures what matters for that data, not only how close the text is: the daily values that would actually be reported, and whether every mistake was flagged for a person to check.
 
-**Case study:** daily aggregate health data forms submitted to [DHIS2](https://dhis2.org), the health information system used in 80+ countries. The same pattern applies to any paper-heavy workflows such as bank and KYC forms, insurance claims, field surveys etc.
+**Case study:** a paper immunisation register. Health workers fill it in daily. Instead of re-counting it onto tally sheets every week, they photograph the pages; a model reads them, code counts every dose by date into daily immunisation values, and a person reviews and approves. Nothing is ever sent to DHIS2 by this project.
 
-> **Status:** v0.1 in progress. Evaluation harness and experiment tracking are being built. No benchmark results yet.
-
----
-
-## Why this exists
-
-Millions of paper forms are still typed into systems by hand. VLMs can read them, but in any setting where errors matter, three questions decide whether that is usable:
-
-1. **How accurate is it, per field type?** Numbers, names, dates and option choices fail differently.
-2. **How small can the model be?** On-device inference works offline and keeps documents on the phone.
-3. **Does the model know when it's wrong?** Errors are acceptable only if they get flagged for a human.
-
-This project answers those with measurements rather than demos.
-
-## Approach
+## How it works
 
 ```mermaid
 flowchart LR
-    A[Form photo] --> B[Fixed preprocessing]
-    B --> C[VLM under test]
-    C --> D[Extraction JSON<br/>keyed by form labels]
-    D --> E[Deterministic mapping<br/>+ validation]
-    E --> F[Draft + per-field<br/>confidence flags]
-    F --> G{Human review}
-    G -->|approved| H[(Target system)]
+    A[Page photo] --> B[VLM + JSON schema<br/>+ fixed prompt]
+    B --> C[Reading:<br/>rows and dates]
+    C --> D[Code counts doses<br/>into daily DHIS2 values]
+    D --> E[Flags for anything<br/>doubtful]
+    E --> F{Person reviews<br/>and approves}
+    F --> G[dataValueSet JSON<br/>never sent]
+    C -.with a truth file.-> S[Scores in the terminal<br/>and in Langfuse]
+    D -.-> S
 ```
 
-- **Two-stage extraction.** The model only reads what is written. Plain code maps values to system IDs and validates them. The model never outputs IDs and never writes to the target system.
-- **Identity fields are matched, not generated.** Handwritten facility names, dates and options are transcribed, then resolved against the list of valid values, with ambiguity flagged.
-- **Confidence from verifiable signals**, not model self-reports: token probabilities, rule checks, cross-field validation, history checks and self-consistency.
-- **Human-in-the-loop by design.** Low- and medium-confidence fields are highlighted for the reviewer. Only an approved draft is imported, after a dry run.
+- **The model only reads.** One call per page photo, the same prompt and JSON schema every time (`register/prompts.py`), temperature 0 and a fixed seed. The schema has no fields for names, phones or villages, so they cannot come back.
+- **Code does the counting.** Dates are parsed, ages computed from the birth date, and values mapped to DHIS2 data elements and category option combos from the data set metadata (`register/spec.py`, `register/aggregate.py`).
+- **Anything doubtful is flagged and not counted** until a person resolves it.
 
-## Evaluation
+## Quick start
 
-Every model runs against the same frozen dataset, prompt version, preprocessing and decoding settings. Only the model changes. Experiments are tracked in a self-hosted [Langfuse](https://langfuse.com) instance.
-
-| Metric | What it measures |
-| --- | --- |
-| `json_valid` | Output parses and matches the schema |
-| `numeric_accuracy` | Count fields read exactly right |
-| `text_cer` | Character error rate on free-text fields |
-| `orgunit_match` / `period_match` | Identity fields resolved to the correct object |
-| `hallucination_rate` | Values invented for blank fields |
-| `flag_recall` | Share of wrong fields that were flagged for review |
-| `flag_rate` | Share of all fields flagged (reviewer workload) |
-| `latency_s`, `peak_mem_gb` | Feasibility on device |
-
-**Decision rule:** among models that pass a fixed quality gate, prefer the smallest. A model whose errors are reliably flagged can beat a more accurate model that is confidently wrong.
-
-### Model tiers
-
-| Tier | Size | Target |
-| --- | --- | --- |
-| 0 | n/a | Classic handwriting OCR + rules (baseline) |
-| 1 | < 1B | Budget phones |
-| 2 | 1–4B | Mid-range phones (primary on-device target) |
-| 3 | 7–12B | High-end phones, laptops |
-| 4 | 30B+ | Server |
-
-## Data
-
-All public data is **constructed**: values are generated first as ground truth, then handwritten onto blank forms by different people and photographed under varied conditions. No real patient or facility data is in this repository.
-
-## Roadmap
-
-- [ ] **v0.1:** Harness, Langfuse tracing, schema generation from DHIS2 metadata, OCR baseline
-- [ ] **v0.2:** Constructed dataset v1, tiers 0–2 benchmarked, failure gallery
-- [ ] **v0.3:** Confidence flags and flag-recall evaluation
-- [ ] **v1.0:** Held-out form layout, real-device run, server-tier ceiling, full write-up
-
-## Run it
-
-Requirements: macOS or Linux, [uv](https://docs.astral.sh/uv/), [Docker](https://www.docker.com/), [Ollama](https://ollama.com).
+Requirements: [uv](https://docs.astral.sh/uv/), [Ollama](https://ollama.com), and optionally a self-hosted [Langfuse](https://langfuse.com/self-hosting).
 
 ```bash
-# 1. Start Langfuse locally (see https://langfuse.com/self-hosting), create a project and API keys
-# 2. Configure
-cp .env.example .env            # add your Langfuse keys
+cp .env.example .env        # Langfuse keys (optional), DHIS2 login (only for `metadata`)
 uv sync
-# 3. Pull a small vision model
-ollama pull qwen2.5vl:3b
-# 4. Smoke test: one image, one traced call
-uv run smoke data/synthetic/samples/sample-01.jpg qwen2.5vl:3b
+ollama pull qwen3.5:4b      # or any vision model Ollama can serve
+
+uv run formbench --help     # every command
+uv run formbench scores     # what every score means
 ```
 
-Scripts load `.env` from the current directory automatically. Run `uv run smoke --help` for usage.
+Private inputs, all kept out of git:
 
-Full benchmark commands will be added in v0.2.
+- `data/private/samples/`: the blank register PDF
+- `data/private/photos/`: your real photos
+- `data/private/synthetic/`: generated scenarios
+- `schemas/dataset/metadata.json`: the DHIS2 data set metadata (`formbench metadata --dataset <uid>`)
 
-## Try it
-
-The full loop on one form, from DHIS2 metadata to scored results. Tesseract is needed for the baseline (`brew install tesseract` or `sudo apt-get install tesseract-ocr`).
+## Test a model
 
 ```bash
-# 1. Schema from a DHIS2 data set (read-only), or regenerate offline from the snapshot
-uv run build-schema --snapshot schemas/child_health/metadata.json
+# One photo, one model: every wrong cell, the scores, a Langfuse trace
+uv run formbench eval --engine ollama:qwen3.5:4b \
+    --scenario data/private/synthetic/neat-scan --photo week-01/page-2026-07-s1.jpg
 
-# 2. Printable form + ground truth: 6 seeded data elements, 25% blank cells
-uv run make-form schemas/child_health --seed 7
-#    -> forms/child_health-7/{form.pdf, values_sheet.pdf, truth.json, layout.json, ...}
+# Your own photo: run once, correct the saved reading by hand into page.truth.json, rerun
+uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/page.jpg
+uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/page.jpg \
+    --truth data/private/photos/page.truth.json
 
-# 3. Print form.pdf at 100% scale, copy the values from values_sheet.pdf by hand,
-#    then photograph it flat with all four black corner squares in frame.
-#    Keep photos out of git:
-#    data/private/child_health-7.jpg
+# A whole folder, one or more models: a synthetic scenario (weeks, review, approval),
+# or a folder of photos that each have a <photo>.truth.json
+uv run formbench bench --scenario data/private/synthetic/bad-poor \
+    --engine ollama:qwen3.5:4b --engine ollama:<another-model>
 
-# 4a. Tesseract template baseline
-uv run extract --form forms/child_health-7 --image data/private/child_health-7.jpg --engine tesseract
-
-# 4b. A vision-language model via Ollama (thinking off; add --think to enable)
-uv run extract --form forms/child_health-7 --image data/private/child_health-7.jpg --engine ollama:qwen3.5:4b
-
-# 5. Compare: each run prints a per-field table and metrics, is saved under
-#    results/runs/, and appears in Langfuse with its scores.
+# Compare every saved run, per model
+uv run formbench compare results/register/bench/*.json
 ```
 
-Design notes: [ADR 0002](docs/adr/0002-template-tesseract-baseline.md) (template OCR baseline), [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) (structured output and thinking).
+**Making more test data.** Synthetic registers are drawn on the real blank page, with known answers. Writers range from neat to terrible, and photos from flat scans to dim and blurred:
 
-## Tech
+```bash
+uv run formbench template        # once: find the grid of the blank PDF
+uv run formbench synth --name bad-poor --seed 25 --weeks 2 --messiness bad --quality poor
+```
 
-Python · uv · Langfuse · Ollama / llama.cpp · MLX · OpenAI-compatible serving · DHIS2 Web API · GitHub Actions
+The same seed always gives the same photos.
+
+**Options:**
+
+- `--max-side 4096`: send a larger image
+- `--think`: let thinking models think
+- `VLM_TIMEOUT=900` in `.env`: allow more seconds per call
+
+## Choosing a model
+
+1. **Use the same conditions for every model:** the same folders and options.
+2. **Rank them by the "decide" scores:**
+   - `value_accuracy_after_review`: what DHIS2 would get
+   - `misread_flag_recall`: how many mistakes the reviewer gets to see
+   - `field_f1` / `tree_f1`: reading quality
+3. **Use the "reading" scores to explain why.**
+   - High ANLS with low Tree F1: it reads well but files values under the wrong column.
+   - High `omission_rate`: it skips dates.
+   - High `hallucination_rate`: it invents dates in empty cells.
+4. **Only trust clear gaps.** A rerun of the same photo can differ in a cell or two, so treat gaps of about 2 points or less as noise. A model should win in most scenarios, not just overall.
+5. **Check the cost.** Multiply `latency_s_per_page` by the pages photographed per week.
+
+In Langfuse, every folder is a dataset and every `bench` run is one of its runs. Open **Datasets → \<folder\> → Runs** to compare models side by side, with whole-run scores and every photo's trace. Every score carries its description there.
+
+## Weekly use
+
+```bash
+# In .env: REGISTER_GO_LIVE=YYYY-MM-DD (doses dated before it are never counted)
+uv run formbench run --week 2026W44 --cover cover.jpg --pages p1.jpg p2.jpg --engine ollama:qwen3.5:4b
+# -> results/register/<week>_<time>/review.html and decisions.yaml: resolve every flag, then
+uv run formbench approve --run results/register/<week>_<time> --reviewer "Your Name"
+# -> datavalueset.json. It is written for a person to import; nothing is sent to DHIS2.
+```
+
+## Using it for a different form
+
+The project is built so that only one folder knows about the register:
+
+| Keep as is | Replace for your form |
+| --- | --- |
+| `vlm.py`: one schema-constrained call to a local model, traced | `register/prompts.py`: your fields, schema and prompt |
+| `metrics.py`: CER, WER, ANLS, list matching, tree edit distance | `register/spec.py`: which field maps to which DHIS2 data element and category option combo |
+| `evaluation/tracking.py`: Langfuse datasets, experiments, score definitions | `register/aggregate.py`: how readings become counts (a tally form may need no counting at all) |
+| `evaluation/bench.py`, `photo.py`: running models over photos with truth files | `evaluation/scoring.py`: keep the text and cell scores; the value scores call your aggregation |
+| `dhis2.py`: read-only metadata download | |
+
+Start with 20–30 real photos and hand-made truth files in one folder, run `formbench bench` on it for each candidate model, and compare. Synthetic data helps you see failure modes; only real photos tell you how a model does on your form.
+
+## Project layout
+
+```text
+src/formbench/
+  cli.py          the formbench command; every option is defined here
+  vlm.py          model call    metrics.py  generic scores    dhis2.py  read-only DHIS2
+  register/       the register form: prompt and schema, reader, dates, counting
+  evaluation/     scores, benchmark runs, the stand-in reviewer, Langfuse
+  weekly/         draft, review page, approval, dataValueSet
+  synthetic/      blank-page template, simulated registers, handwriting and photo effects
+docs/adr/         why things are the way they are
+```
+
+## Results so far
+
+qwen3.5:4b, whole-page photos, 6 synthetic scenarios (27 photos, neat scans to terrible handwriting):
+
+- **Values after review:** 30% of daily values right
+- **Misread flag recall:** 52% of misreads flagged
+- **Field F1:** 0.58
+- **Main failure:** dates read correctly but filed under the neighbouring narrow column
+
+Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md).
+
+## Rules this project keeps
+
+- **DHIS2 is read-only.** Metadata and org unit lookups only; the payload is written to a file.
+- **A person approves every week,** even with no flags.
+- **Private data stays local.** Photos, the blank register, the metadata snapshot, synthetic data and results are never committed.
+- **Tests need nothing running.** No Ollama, Langfuse or network: `uv run pytest -q`.
+
+Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments.
 
 ## License
 

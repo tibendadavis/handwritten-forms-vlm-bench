@@ -11,37 +11,27 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from PIL import Image, ImageOps
 
-# Bump when the prompt text changes so runs stay comparable.
-PROMPT_VERSION = "v1"
 DEFAULT_BASE_URL = "http://localhost:11434/v1"
 SEED = 42
 # Phone photos are 12MP+; a fixed downscale keeps latency sane and runs repeatable.
 MAX_SIDE = 2048
+# A full register page is about 5k output tokens; the cap stops a reply that loops forever.
+MAX_TOKENS = 8192
+# One call may take minutes on a laptop; past this it has failed. No silent retries: a retry
+# repeats the same deterministic call and only multiplies the wait.
+REQUEST_TIMEOUT = 600.0
 
 
-def build_prompt(schema: dict[str, Any]) -> str:
-    keys = "\n".join(
-        f"- {key}: {prop.get('description', key)}" for key, prop in schema["properties"].items()
-    )
-    return (
-        "You are reading a photo of a handwritten paper form.\n"
-        "Return one JSON object with exactly these keys:\n"
-        f"{keys}\n\n"
-        "Rules:\n"
-        "- Counts are integers, exactly as written in the box.\n"
-        "- Use null when a box is empty or unreadable. Never guess a value.\n"
-        "- Copy the facility name and period exactly as handwritten.\n"
-        "- Output only the JSON object."
-    )
-
-
-def encode_image(path: Path) -> str:
-    """The photo as a JPEG data URL, upright and at most MAX_SIDE pixels on its long side."""
-    with Image.open(path) as img:
-        img = ImageOps.exif_transpose(img).convert("RGB")
-        img.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=90)
+def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE) -> str:
+    """The photo as a JPEG data URL, upright and at most max_side pixels on its long side."""
+    if isinstance(source, Image.Image):
+        img = source.convert("RGB")
+    else:
+        with Image.open(source) as opened:
+            img = ImageOps.exif_transpose(opened).convert("RGB")
+    img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
@@ -85,19 +75,31 @@ def interpret(raw: str | None, schema: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def extract(
-    image: Path,
+def complete_json(
+    image: Path | Image.Image,
     schema: dict[str, Any],
+    prompt: str,
     model: str,
     *,
     think: bool = False,
+    max_side: int = MAX_SIDE,
+    name: str = "vlm-extract",
+    metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
-) -> dict[str, Any]:
-    """Ask an Ollama model to fill the schema from the photo; traced by Langfuse."""
+    max_tokens: int = MAX_TOKENS,
+) -> str | None:
+    """One schema-constrained call to an Ollama model with an image; traced by Langfuse.
+
+    A reply cut off at max_tokens is returned as is; it fails JSON parsing and is recorded as
+    json_valid = 0 by the caller.
+    """
     from langfuse.openai import OpenAI  # type: ignore # drop-in wrapper: traces every call
 
     client = OpenAI(
-        base_url=base_url or os.environ.get("OLLAMA_BASE_URL", DEFAULT_BASE_URL), api_key="ollama"
+        base_url=base_url or os.environ.get("OLLAMA_BASE_URL", DEFAULT_BASE_URL),
+        api_key="ollama",
+        timeout=float(os.environ.get("VLM_TIMEOUT", REQUEST_TIMEOUT)),
+        max_retries=0,
     )
     # Ollama maps reasoning_effort "none" to think=false; omitting it keeps the model default.
     options: dict[str, Any] = {} if think else {"reasoning_effort": "none"}
@@ -105,12 +107,13 @@ def extract(
         model=model,
         temperature=0,
         seed=SEED,
+        max_tokens=max_tokens,
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": build_prompt(schema)},
-                    {"type": "image_url", "image_url": {"url": encode_image(image)}},
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": encode_image(image, max_side)}},
                 ],
             }
         ],
@@ -122,8 +125,8 @@ def extract(
                 "schema": response_schema(schema),
             },
         },
-        name="vlm-extract",
-        metadata={"prompt_version": PROMPT_VERSION, "think": think},
+        name=name,
+        metadata={"think": think, **(metadata or {})},
         **options,
     )
-    return interpret(response.choices[0].message.content, schema)
+    return response.choices[0].message.content

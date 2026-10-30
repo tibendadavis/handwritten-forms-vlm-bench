@@ -6,7 +6,6 @@ from PIL import Image
 
 from formbench.vlm import (
     MAX_SIDE,
-    build_prompt,
     encode_image,
     interpret,
     parse_json,
@@ -60,12 +59,6 @@ def test_unparseable_reply_gives_all_null():
     assert result["values"] == {"period": None, "bcg__lt_1y": None}
 
 
-def test_prompt_lists_every_key_with_its_description():
-    prompt = build_prompt(SCHEMA)
-    assert "- bcg__lt_1y: BCG doses given (<1y)" in prompt
-    assert "- period: Period" in prompt
-
-
 def test_response_schema_drops_only_the_header():
     out = response_schema(SCHEMA)
     assert "$schema" not in out and out["properties"] == SCHEMA["properties"]
@@ -78,3 +71,9 @@ def test_photo_is_downscaled(tmp_path):
     assert url.startswith("data:image/jpeg;base64,")
     decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
     assert max(decoded.size) == MAX_SIDE
+
+
+def test_in_memory_image_is_encoded_with_custom_size():
+    url = encode_image(Image.new("RGB", (5000, 1000), "white"), max_side=3000)
+    decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+    assert decoded.size == (3000, 600)

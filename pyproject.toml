@@ -14,20 +14,15 @@ dependencies = [
     "openai>=2.48.0",
     "opencv-python-headless>=5.0.0.93",
     "pillow>=11.3.0",
-    "psutil>=7.2.2",
-    "pydantic>=2.13.5",
-    "pytesseract>=0.3.13",
+    "pypdfium2>=5.14.0",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
     "rich>=15.0.0",
+    "zss>=1.2.0",
 ]
 
 [project.scripts]
-formbench = "formbench:main"
-smoke = "formbench.smoke:main"
-build-schema = "formbench.build_schema:main"
-make-form = "formbench.form_gen:main"
-extract = "formbench.extract:main"
+formbench = "formbench.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
@@ -51,3 +46,7 @@ select = [
   "SIM",      # simplifications (SIM115)
   "B",        # likely bugs, e.g. mutable default arguments
 ]
+
+[tool.pytest.ini_options]
+# macOS system Python links LibreSSL; urllib3 warns about it on import. Not a test concern.
+filterwarnings = ["ignore:urllib3 v2 only supports OpenSSL"]
