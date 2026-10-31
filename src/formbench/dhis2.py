@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from formbench.files import slugify, write_json
+from formbench.files import write_json
 
 DATASET_FIELDS = ",".join(
     [
@@ -61,11 +61,11 @@ class Dhis2Client:
         return response.json()["organisationUnits"]
 
 
-def fetch_metadata(dataset: str, out: Path | None = None) -> Path:
+def fetch_metadata(dataset: str, out: Path) -> Path:
     """Save a data set's metadata (elements, category option combos, attribute options) as
-    schemas/<data set name>/metadata.json, the offline source of truth for counting."""
+    <out>/metadata.json, the offline source of truth for counting."""
     ds = Dhis2Client.from_env().get_dataset(dataset)
-    path = (out or Path("schemas") / slugify(ds["name"])) / "metadata.json"
+    path = out / "metadata.json"
     write_json(path, ds)
     return path
 
