@@ -3,19 +3,7 @@ import random
 
 import pytest
 
-from formbench.metrics import (
-    anls,
-    anls_list,
-    char_edits,
-    f1,
-    hungarian,
-    levenshtein,
-    match_lists,
-    normalized_distance,
-    to_tree,
-    tree_distance,
-    word_edits,
-)
+from formbench.metrics import anls, hungarian, levenshtein, normalized_distance
 
 
 @pytest.mark.parametrize(
@@ -23,11 +11,6 @@ from formbench.metrics import (
 )
 def test_levenshtein(a, b, d):
     assert levenshtein(a, b) == d == levenshtein(b, a)
-
-
-def test_cer_wer_counts():
-    assert char_edits("Amani North", "Amani Nort") == (1, 11)
-    assert word_edits("Amani North Clinic", "Amani Clinic") == (1, 3)
 
 
 def test_anls_threshold():
@@ -50,25 +33,3 @@ def test_hungarian_is_optimal_on_random_matrices():
             for cols in itertools.permutations(range(m), min(n, m))
         )
         assert sum(cost[i][j] for i, j in pairs) == pytest.approx(best)
-
-
-def test_anls_list_penalizes_missing_and_invented_items():
-    same = lambda a, b: anls(a, b)  # noqa: E731
-    assert anls_list(["a", "b"], ["b", "a"], same) == 1.0
-    assert anls_list(["a", "b"], ["a"], same) == 0.5
-    assert anls_list(["a"], ["a", "zz"], same) == 0.5
-    assert anls_list([], [], same) == 1.0
-    assert [(i, j) for i, j, _ in match_lists(["x", "y"], ["y", "x"], same)] == [(0, 1), (1, 0)]
-
-
-def test_f1():
-    assert f1(8, 2, 2) == pytest.approx(0.8)
-    assert f1(0, 0, 0) is None
-
-
-def test_tree_distance_charges_less_for_a_close_value_than_a_moved_one():
-    truth = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv1": "12-06-25"}]})
-    close = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv1": "12-08-25"}]})
-    moved = to_tree({"cohort": "June", "rows": [{"serial": "1", "opv2": "12-06-25"}]})
-    assert tree_distance(truth, truth) == 0
-    assert 0 < tree_distance(truth, close) < tree_distance(truth, moved)

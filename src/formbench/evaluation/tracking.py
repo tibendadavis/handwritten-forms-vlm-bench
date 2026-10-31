@@ -3,11 +3,11 @@
 - Score definitions: every score in SCORES is registered once (as a Langfuse score config)
   with its description and range, so the Langfuse UI explains each number and rejects a value
   outside its range.
-- Datasets: a scenario folder, or a folder of real photos with truth files, becomes a dataset.
+- Datasets: a folder of real photos with truth files, or a scenario folder, becomes a dataset.
   Each photo is an item whose expected output is what is really written on it.
 - Experiments: benchmarking one model on a dataset is one dataset run. Page scores land on
-  each photo's trace; whole-run scores (values after review, misread flag recall, ...) land on
-  the run, so runs of different models sit side by side under Datasets in Langfuse.
+  each photo's trace; the same scores pooled over the folder land on the run, so runs of
+  different models sit side by side under Datasets in Langfuse.
 
 Nothing here is needed for scoring itself: without Langfuse the benchmark still runs and saves
 its results locally.

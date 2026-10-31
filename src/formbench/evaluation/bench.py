@@ -1,9 +1,10 @@
-"""Benchmark models on a scenario (photos + truth.json), end to end.
+"""Benchmark models on a folder of photos with their truth, one model per run.
 
-Each week of the scenario is read by the model, turned into a draft, reviewed by the oracle
-reviewer (evaluation/review.py) who fixes only what the system flagged, and approved. The
-approved daily values are compared with the expected ones: a mismatch there is an error that
-reached the DHIS2 payload unflagged, which is what data integrity is about.
+A folder is either real photos, each with a truth file next to it (page.jpg + page.json or
+page.truth.json), or a synthetic scenario (truth.json). Every photo is read and scored against
+its truth. A scenario also goes through the weekly workflow: draft, a stand-in reviewer who
+fixes only what was flagged (evaluation/review.py), and approval, so the approved DHIS2
+values can be checked too.
 """
 
 from __future__ import annotations
@@ -20,19 +21,18 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
-from formbench.evaluation.review import flag_catch, review_and_approve, review_counts
+from formbench.evaluation.review import review_and_approve, review_counts
 from formbench.evaluation.scoring import (
     SCORES,
     Score,
     compare_values,
     metrics,
-    score_cover,
     score_page,
     sum_counts,
 )
 from formbench.evaluation.tracking import evaluations, item_input, score_configs, sync_dataset
+from formbench.evaluation.truth import load_truth, truth_file
 from formbench.files import slugify, stamp, write_json
-from formbench.register.aggregate import resolve_attribute_option
 from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
@@ -41,36 +41,32 @@ PHOTO_TYPES = (".jpg", ".jpeg", ".png")
 NOT_READ = {"reading": {"cohort_month": None, "cohort_year": None, "rows": []}, "json_valid": False,
             "errors": ["not read"], "latency_s": 0.0}  # fmt: skip
 GROUPS = {
-    "decide": "What DHIS2 gets: rank models by these",
-    "reading": "How it reads: explains the result",
-    "review": "Reviewer workload",
+    "reading": "How well it reads (rank models by these)",
+    "dhis2": "What DHIS2 would get",
     "cost": "Cost",
 }
-
-
-def _values(rows: list[dict[str, Any]]) -> dict[tuple[str, str, str], int]:
-    return {(v["day"], v["data_element"], v["coc"]): v["value"] for v in rows}
+RESULTS = Path("results/register/bench")
 
 
 def load_items(folder: Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None, list[str]]:
     """The photos of a folder with what is really written on them, as dataset items.
 
     A scenario folder has a truth.json (weeks, cover, expected values). Any other folder holds
-    photos, each with a truth file next to it: page.jpg + page.truth.json. Returns the items,
-    the scenario truth (None for a photo folder) and the photos that have no truth file.
+    photos, each with a truth file next to it (evaluation/truth.py). Returns the items, the
+    scenario truth (None for a photo folder) and the photos that have no truth file.
     """
-    truth_file = folder / "truth.json"
-    if truth_file.exists():
-        truth = json.loads(truth_file.read_text())
+    scenario = folder / "truth.json"
+    if scenario.exists():
+        truth = json.loads(scenario.read_text())
         items = [_item(folder, "cover.jpg", "cover", truth["cover"])]
         items += [_item(folder, p["file"], "page", p["reading"], week=w["week"])
                   for w in truth["weeks"] for p in w["photos"]]  # fmt: skip
         return items, truth, []
     items, skipped = [], []
     for photo in sorted(p for p in folder.iterdir() if p.suffix.lower() in PHOTO_TYPES):
-        expected = photo.with_name(f"{photo.stem}.truth.json")
-        if expected.exists():
-            items.append(_item(folder, photo.name, "page", json.loads(expected.read_text())))
+        expected = truth_file(photo)
+        if expected is not None:
+            items.append(_item(folder, photo.name, "page", load_truth(expected)))
         else:
             skipped.append(photo.name)
     return items, None, skipped
@@ -96,9 +92,9 @@ def read_item(folder: Path, item: dict[str, Any], model: str, *, think: bool = F
 
 
 def photo_scores(output: dict[str, Any], expected: Any, spec: RegisterSpec) -> dict[str, float]:
-    """Scores for one photo against its truth."""
+    """Scores for one photo against its truth (the cover of a scenario is read, not scored)."""
     if "cover" in output:
-        return metrics(score_cover(output["cover"], expected))
+        return {}
     counts = score_page(output["reading"], expected, output["json_valid"], spec)
     return metrics(counts, latency=output["latency_s"])
 
@@ -135,24 +131,18 @@ def review_weeks(truth: dict[str, Any], outputs: dict[str, dict[str, Any]], ds: 
 
 
 def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[str, Any],
-              latency: float, cover: dict[str, Any] | None = None) -> dict[str, Any]:  # fmt: skip
+              latency: float) -> dict[str, Any]:  # fmt: skip
     """All scores of a scenario run from what it recorded, so saved runs can be re-scored
     without a model."""
     spec = load_spec(ds)
-    counts, drafts = [], []
+    counts = []
     for week, out in zip(truth["weeks"], weeks_out):
         pages = [{"page_id": r["page_id"], **r["reading"]} for r in out["pages"]]
         for reading, photo in zip(out["pages"], week["photos"]):
             counts.append(score_page(reading["reading"], photo["reading"], reading["json_valid"], spec))  # fmt: skip
-        drafts.append({"flags": out["first_flags"],
-                       "unresolved_blocking": [f["id"] for f in out["first_flags"] if f["blocking"] and not f["resolved"]]})  # fmt: skip
-        counts.append(review_counts(out["first_flags"], pages, week["photos"], truth["edges"]))
+        counts.append(review_counts(out["first_flags"], pages, week["photos"]))
         counts.append(compare_values(_values(out["approved_values"] + out["approved_corrections"]),
                                      _values(week["expected"]["values"] + week["expected"]["corrections"])))  # fmt: skip
-    cover_expected = resolve_attribute_option(truth["cover"]["facility_type"], spec)[1] is not None
-    counts.append(flag_catch(drafts, truth["edges"], cover_expected))
-    if cover is not None:
-        counts.append(score_cover(cover, truth["cover"]))
     total = sum_counts(counts)
     return {"metrics": metrics(total, weeks=len(truth["weeks"]), latency=latency), "counts": total}
 
@@ -220,7 +210,7 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
     if truth is not None:
         weeks_out = review_weeks(truth, outputs, ds)
         cover = outputs.get("cover.jpg", {}).get("cover")
-        record = {**score_run(weeks_out, truth, ds, latency, cover), "cover": cover, "weeks": weeks_out}  # fmt: skip
+        record = {**score_run(weeks_out, truth, ds, latency), "cover": cover, "weeks": weeks_out}
     else:
         pages_out = []
         for item in items:
@@ -247,8 +237,8 @@ def _cell(score: Score, value: Any) -> str:
 
 
 def score_table(title: str, columns: list[tuple[str, dict[str, Any]]]) -> Table:
-    """Scores grouped by what they are for; ↑ higher is better, ↓ lower is better."""
-    table = Table(title=title)
+    """One column per model, scores grouped by what they are for; ↑ higher is better."""
+    table = Table(title=title, caption="↑ higher is better. Meanings: formbench scores")  # fmt: skip
     table.add_column("Score")
     for label, _ in columns:
         table.add_column(label.split(":", 1)[-1][-28:], justify="right")
@@ -259,7 +249,7 @@ def score_table(title: str, columns: list[tuple[str, dict[str, Any]]]) -> Table:
         table.add_row(f"[bold]{heading}[/bold]", end_section=False)
         for s in scores:
             arrow = {True: " ↑", False: " ↓"}.get(s.higher_is_better, "")
-            table.add_row(f"  {s.name}{arrow}", *(_cell(s, m.get(s.name)) for _, m in columns))
+            table.add_row(f"  {s.label}{arrow}", *(_cell(s, m.get(s.name)) for _, m in columns))
         table.add_section()
     return table
 
@@ -285,23 +275,37 @@ def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 
 
 def compare(args: argparse.Namespace) -> None:
-    runs = [json.loads(p.read_text()) for p in args.runs]
-    scenarios = sorted({r["settings"]["scenario"] for r in runs})
-    pages = sum(page_count(r) for r in runs)
-    title = f"{len(scenarios)} scenario(s), {pages} page photos: {', '.join(scenarios)}"
-    Console().print(score_table(title, sorted(combine(runs).items())))
+    """One table per folder with every model that ran on it; repeated runs of a model on the
+    same folder are pooled. With several folders, a last table pools them all per model."""
+    paths = args.runs or sorted(RESULTS.glob("*.json"))
+    runs = [json.loads(p.read_text()) for p in paths]
+    if args.folder:
+        runs = [r for r in runs if r["settings"]["scenario"] == args.folder]
+    if not runs:
+        raise SystemExit("formbench compare: no saved runs (run `formbench bench` first)")
+    console = Console()
+    folders = sorted({r["settings"]["scenario"] for r in runs})
+    for folder in folders:
+        group = [r for r in runs if r["settings"]["scenario"] == folder]
+        photos = max(page_count(r) for r in group)
+        title = f"{folder}: {photos} photo(s), {len(group)} run(s)"
+        console.print(score_table(title, sorted(combine(group).items())))
+    if len(folders) > 1:
+        title = f"All {len(folders)} folders pooled: {', '.join(folders)}"
+        console.print(score_table(title, sorted(combine(runs).items())))
 
 
 def explain(args: argparse.Namespace) -> None:
     """Print what every score means, grouped as in the benchmark tables."""
     table = Table(title="Scores (↑ higher is better, ↓ lower is better)", show_lines=False)
     table.add_column("Score")
+    table.add_column("Name in Langfuse")
     table.add_column("What it means")
     for group, heading in GROUPS.items():
-        table.add_row(f"[bold]{heading}[/bold]", "")
+        table.add_row(f"[bold]{heading}[/bold]", "", "")
         for s in (s for s in SCORES if s.group == group):
             arrow = {True: " ↑", False: " ↓"}.get(s.higher_is_better, "")
-            table.add_row(f"  {s.name}{arrow}", s.description)
+            table.add_row(f"  {s.label}{arrow}", s.name, s.description)
         table.add_section()
     Console().print(table)
 
@@ -309,10 +313,9 @@ def explain(args: argparse.Namespace) -> None:
 def _rescore(path: Path, folder: Path, ds: dict[str, Any]) -> dict[str, Any]:
     run = json.loads(path.read_text())
     items, truth, _ = load_items(folder)
-    pages = page_count(run)
-    latency = run.get("latency_s") or run["metrics"]["latency_s_per_page"] * pages
+    latency = run.get("latency_s") or 0.0
     if truth is not None:
-        run.update(score_run(run["weeks"], truth, ds, latency, run.get("cover")))
+        run.update(score_run(run["weeks"], truth, ds, latency))
     else:
         run.update(score_photos(run["pages"], items, ds, latency))
     write_json(path, run)
@@ -325,7 +328,7 @@ def command(args: argparse.Namespace) -> None:
     from formbench.cli import model_tag
 
     ds = json.loads(args.metadata.read_text())
-    folder = args.scenario
+    folder = args.folder
     console = Console()
     rows = []
     if args.rescore:
@@ -359,4 +362,5 @@ def command(args: argparse.Namespace) -> None:
             console.print(f"Langfuse: {result['dataset_run_url']}")
         console.print(f"Saved to {path}")
         rows.append((engine, result["metrics"]))
-    console.print(score_table(f"Register benchmark: {folder.name}", rows))
+    console.print(score_table(f"{folder.name}: this run", rows))
+    console.print(f"All runs on this folder side by side: formbench compare --folder {folder.name}")

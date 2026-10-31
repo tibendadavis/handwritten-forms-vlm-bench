@@ -120,38 +120,21 @@ def review_and_approve(pages, photos, cover, spec, labels, week_truth, *, go_liv
     return first, current
 
 
-def flag_catch(drafts: list[dict[str, Any]], edges: list[dict[str, Any]], cover_flag_expected: bool) -> dict[str, int]:  # fmt: skip
-    """Injected problems that should raise a blocking flag, and how many of them did."""
-    expected = {(e["code"], e["serial"]) for e in edges if e["code"] in ("birth_date_missing", "wrong_cohort", "future_date")}  # fmt: skip
-    raised = {(f["code"], f["serial"]) for d in drafts for f in d["flags"] if f["blocking"]}
-    caught = {e for e in expected if e in raised}
-    if cover_flag_expected:
-        expected.add(("facility_type_unclear", None))
-        if any(f["code"] == "facility_type_unclear" for d in drafts for f in d["flags"]):
-            caught.add(("facility_type_unclear", None))
-    return {"edges": len(expected), "edges_caught": len(caught),
-            "blocking_flags": sum(len(d["unresolved_blocking"]) for d in drafts)}  # fmt: skip
-
-
 ROW_FLAGS = {"birth_date_missing", "birth_date_unreadable", "sex_unreadable", "wrong_cohort",
              "duplicate_serial", "row_missing"}  # fmt: skip
 CHECKED = ("sex", "birth_date", *DOSES)
 
 
-def review_counts(flags: list[dict[str, Any]], pages: list[dict[str, Any]], photos: list[dict[str, Any]],
-                  edges: list[dict[str, Any]]) -> dict[str, int]:  # fmt: skip
-    """Did flags point the reviewer at the model's misreads, and how many flags were raised on
-    readings that were actually right (false alarms)?
+def review_counts(flags: list[dict[str, Any]], pages: list[dict[str, Any]], photos: list[dict[str, Any]]) -> dict[str, int]:  # fmt: skip
+    """The model's misreads, how many of them a blocking flag put in front of the reviewer,
+    and how many blocking flags there were.
 
     A row-level flag (missing birth date, wrong cohort, ...) puts the whole row in front of the
     reviewer, so it covers every cell of that row; a cell flag covers its cell.
     """
-    edge_rows = {(e["code"], e["serial"]) for e in edges}
     misread: set[tuple[str, str, str]] = set()
-    truth_rows: dict[str, dict[str, Any]] = {}
     for page, photo in zip(pages, photos):
         truth = {r["serial"]: r for r in photo["reading"]["rows"]}
-        truth_rows[page["page_id"]] = truth
         for row in page["rows"]:
             serial = str(row.get("serial") or "")
             t = truth.get(serial)
@@ -162,33 +145,16 @@ def review_counts(flags: list[dict[str, Any]], pages: list[dict[str, Any]], phot
                 elif not same_value(t.get(key), row.get(key), key):
                     misread.add((page["page_id"], serial, key))
     covered: set[tuple[str, str, str]] = set()
-    false_alarms = 0
-    for f in flags:
-        if not f["blocking"] or not f["page"]:
+    blocking = [f for f in flags if f["blocking"]]
+    for f in blocking:
+        if not f["page"]:
             continue
         pid, serial = f["page"], f["serial"]
         if f["code"] == "cohort_unreadable":
-            cells = {m for m in misread if m[0] == pid}
-            useful = True
+            covered |= {m for m in misread if m[0] == pid}
         elif f["code"] in ROW_FLAGS or not f["column"]:
-            cells = {m for m in misread if m[:2] == (pid, serial)}
-            useful = (
-                bool(cells)
-                or (f["code"], serial) in edge_rows
-                or serial not in truth_rows.get(pid, {})
-            )
-        elif f["code"] == "changed_since_approved":
-            # Two readings of one cell disagree, so one of them is wrong: if today's is right,
-            # the flag exposes a wrong value approved earlier. Never a false alarm.
-            cells = {(pid, serial, f["column"])} & misread
-            useful = True
+            covered |= {m for m in misread if m[:2] == (pid, serial)}
         else:
-            cells = {(pid, serial, f["column"])} & misread
-            useful = bool(cells) or (f["code"], serial) in edge_rows
-        covered |= cells
-        false_alarms += not useful
-    return {
-        "misreads": len(misread),
-        "misreads_flagged": len(covered),
-        "false_alarms": false_alarms,
-    }
+            covered |= {(pid, serial, f["column"])} & misread
+    return {"misreads": len(misread), "misreads_flagged": len(covered),
+            "blocking_flags": sum(not f["resolved"] for f in blocking)}  # fmt: skip

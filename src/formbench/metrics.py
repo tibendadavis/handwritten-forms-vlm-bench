@@ -1,13 +1,11 @@
-"""Text and structure metrics for extraction outputs: CER, WER, ANLS, ANLS for lists,
-field F1 and an ANLS-weighted tree edit distance. Pure functions, no dependencies beyond zss.
+"""Text similarity and list matching, used to pair the model's rows with the truth's rows.
+Pure functions, no dependencies.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any, Callable
-
-import zss
 
 ANLS_THRESHOLD = 0.5
 
@@ -35,17 +33,6 @@ def anls(truth: str, predicted: str, threshold: float = ANLS_THRESHOLD) -> float
     """ANLS similarity of one field: 1 - normalized distance, or 0 at/above the threshold."""
     distance = normalized_distance(truth, predicted)
     return 1 - distance if distance < threshold else 0.0
-
-
-def char_edits(truth: str, predicted: str) -> tuple[int, int]:
-    """(edits, truth characters) for corpus-level CER."""
-    return levenshtein(truth, predicted), len(truth)
-
-
-def word_edits(truth: str, predicted: str) -> tuple[int, int]:
-    """(edits, truth words) for corpus-level WER."""
-    words = truth.split()
-    return levenshtein(words, predicted.split()), len(words)
 
 
 def hungarian(cost: list[list[float]]) -> list[tuple[int, int]]:
@@ -100,46 +87,3 @@ def match_lists(
     scores = [[similarity(t, p) for p in predicted] for t in truth]
     pairs = hungarian([[1 - s for s in row] for row in scores])
     return [(i, j, scores[i][j]) for i, j in pairs]
-
-
-def anls_list(truth: list[Any], predicted: list[Any], similarity: Callable[[Any, Any], float]) -> float:  # fmt: skip
-    """ANLS for lists (as in ANLS*): optimal matching, divided by the longer list, so missing
-    and invented items both cost. Two empty lists score 1."""
-    if not truth and not predicted:
-        return 1.0
-    matched = match_lists(truth, predicted, similarity)
-    return sum(s for _, _, s in matched) / max(len(truth), len(predicted))
-
-
-def f1(tp: int, fp: int, fn: int) -> float | None:
-    if tp + fp + fn == 0:
-        return None
-    return 2 * tp / (2 * tp + fp + fn)
-
-
-class _Node:
-    __slots__ = ("label", "children", "leaf")
-
-    def __init__(self, label: str, children: list[_Node] | None = None, leaf: bool = False):
-        self.label, self.children, self.leaf = label, children or [], leaf
-
-
-def to_tree(value: Any, label: str = "<root>") -> _Node:
-    """JSON-like value -> ordered labelled tree; dict keys sorted, None/"" leaves dropped."""
-    if isinstance(value, dict):
-        return _Node(label, [to_tree(value[k], k) for k in sorted(value) if value[k] not in (None, "")])  # fmt: skip
-    if isinstance(value, list):
-        return _Node(label, [to_tree(v, "<item>") for v in value])
-    return _Node(label, [_Node(str(value), leaf=True)])
-
-
-def tree_distance(truth: _Node, predicted: _Node) -> float:
-    """Tree edit distance; inserting or removing a node costs 1, relabelling a leaf costs its
-    normalized edit distance (ANLS-style), relabelling a structural node costs 0 or 1."""
-
-    def update(a: _Node, b: _Node) -> float:
-        if a.leaf and b.leaf:
-            return normalized_distance(a.label, b.label)
-        return 0.0 if a.label == b.label and a.leaf == b.leaf else 1.0
-
-    return zss.distance(truth, predicted, lambda n: n.children, lambda n: 1, lambda n: 1, update)

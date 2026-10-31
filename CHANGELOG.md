@@ -15,14 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
 - Weekly workflow: draft with flags, `review.html` and `decisions.yaml`, approval by a named person, `datavalueset.json` (never posted), corrections as full totals for already approved weeks
 - Synthetic registers on the real blank page: simulated children and visits over several weeks, planted edge cases, one to three writers from neat to terrible, pencil and faded ink, scan to terrible photos; same seed, same photos
-- Scores, defined once with their meaning, range and direction (`formbench scores`): values correct after and before review, misread flag recall, field and Tree F1, CER, WER, ANLS, ANLSL, field accuracy, GAnTED, STP rate, schema pass rate, omission and hallucination rates, review workload, latency
-- `formbench eval`: one photo, one model, every wrong cell and the scores
-- `formbench bench`: a synthetic scenario (through review and approval) or a folder of photos with truth files, for one or more models; `--rescore` saved runs; `formbench compare` combines runs per model
+- Ten scores with plain labels (`formbench scores`): cells correct (the main score), written cells read right, model's values that are right, rows found, valid output, DHIS2 values right (before and after review), misreads flagged, flags per week, seconds per page
+- Truth files next to each photo (`page.json`), with columns named by key, register letter or both; unknown columns are reported, unread personal columns ignored
+- `formbench eval`: one photo, one model, every wrong cell and the scores; finds the truth file next to the photo
+- `formbench bench --folder`: a folder of photos with truth files, or a synthetic scenario (through review and approval), for one or more models; `--rescore` saved runs
+- `formbench compare --folder <name>`: every model that ran on a folder, side by side
 - Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
-- ADRs 0003 to 0006
+- ADRs 0003 to 0007
 
 ### Removed
 - Tesseract OCR baseline and its CI dependency
 - Generic printable forms (`make-form`), marker alignment and the per-field `extract` command, with their example schemas
 - Tiles reading mode and template alignment: whole-page photos only
 - `smoke` and the separate `register-*` console scripts (now `formbench` subcommands)
+- Literature scores that overlapped or needed explaining: CER, WER, ANLS, ANLSL, GAnTED, Tree and field F1, STP and schema pass rates, omission and hallucination rates, cover accuracy, planted-problem recall, false alarms; and the `zss` dependency

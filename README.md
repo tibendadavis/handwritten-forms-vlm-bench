@@ -44,57 +44,116 @@ Private inputs, all kept out of git:
 - `data/private/synthetic/`: generated scenarios
 - `schemas/dataset/metadata.json`: the DHIS2 data set metadata (`formbench metadata --dataset <uid>`)
 
-## Test a model
+## Compare models on your own photos
 
-```bash
-# One photo, one model: every wrong cell, the scores, a Langfuse trace
-uv run formbench eval --engine ollama:qwen3.5:4b \
-    --scenario data/private/synthetic/neat-scan --photo week-01/page-2026-07-s1.jpg
+**1. Put the photos and their truth side by side** in one folder (the folder is your dataset):
 
-# Your own photo: run once, correct the saved reading by hand into page.truth.json, rerun
-uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/page.jpg
-uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/page.jpg \
-    --truth data/private/photos/page.truth.json
-
-# A whole folder, one or more models: a synthetic scenario (weeks, review, approval),
-# or a folder of photos that each have a <photo>.truth.json
-uv run formbench bench --scenario data/private/synthetic/bad-poor \
-    --engine ollama:qwen3.5:4b --engine ollama:<another-model>
-
-# Compare every saved run, per model
-uv run formbench compare results/register/bench/*.json
+```text
+data/private/photos/my-pages/
+  page-1.jpg   page-1.json
+  page-2.jpg   page-2.json
 ```
 
-**Making more test data.** Synthetic registers are drawn on the real blank page, with known answers. Writers range from neat to terrible, and photos from flat scans to dim and blurred:
+A truth file lists what is really written, one object per child row. Name each column by
+its letter, its key, or both:
+
+```json
+{"cohort_month": "June", "cohort_year": "2026",
+ "rows": [{"A": "1", "D": "7654", "G": "M", "birth_date": "03-06-26", "age": "1/12",
+           "I": "05-06-26", "K": "05-06-26", "L": "17-07-26"}]}
+```
+
+- Column C holds two values: call them `birth_date` and `age`.
+- Leave blank cells out. Name, guardian, phone and village columns are ignored.
+- A plain list of rows works too. The month and year are only scored if you include them.
+- A misspelled column stops the run and lists the valid ones.
+
+**2. Run each model on the folder**, one run per model (or several `--engine` at once):
+
+```bash
+uv run formbench bench --folder data/private/photos/my-pages --engine ollama:qwen3.5:4b
+uv run formbench bench --folder data/private/photos/my-pages --engine ollama:hf.co/ibm-granite/granite-vision-4.1-4b-GGUF:Q8_0
+```
+
+**3. See every model side by side:**
+
+```bash
+uv run formbench compare --folder my-pages
+```
+
+Example output (one column per model):
+
+```text
+                                   qwen3.5:4b   granite-vision
+How well it reads (rank models by these)
+  Cells correct ↑                       51.0%            ...
+  Written cells read right ↑            53.4%
+  Model's values that are right ↑       63.3%
+  Rows found ↑                          98.0%
+  Valid output ↑                       100.0%
+What DHIS2 would get
+  DHIS2 values right ↑                  29.0%
+Cost
+  Seconds per page ↓                    101.1
+```
+
+**4. See what one model got wrong on one photo,** cell by cell (the truth is found next to it):
+
+```bash
+uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/my-pages/page-1.jpg
+```
+
+No truth yet? Run `eval` on the photo anyway, then correct the reading it saves into a truth
+file.
+
+**Options:** `--max-side 4096` sends a larger image, `--think` lets thinking models think, and
+`VLM_TIMEOUT=900` in `.env` allows more seconds per call.
+
+## What the scores mean
+
+A **cell** is one value in one row and column. It is right when the model put the same value
+under the same column. Dates count as the same if they are the same day (`5/6/26` = `05-06-26`).
+
+| Score | What it tells you |
+| --- | --- |
+| **Cells correct** | **The main score.** Of every cell that has a value on the page or in the output, the share that is right. |
+| Written cells read right | Of what is written on the page, how much it got right. Low: it misses or misreads. |
+| Model's values that are right | Of what it returned, how much is right. Low: it invents values or files them under the wrong column. |
+| Rows found | Child rows found, by serial number. |
+| Valid output | Photos that gave usable JSON at all. |
+| DHIS2 values right | Daily DHIS2 values counted from its reading that equal those counted from the truth. Stricter: needs birth date and sex right too. |
+| Seconds per page | Speed on this machine. |
+
+Synthetic scenarios add three: DHIS2 values right after review, misreads flagged and flags per
+week (see below). `uv run formbench scores` prints all of them.
+
+**Choosing a model:**
+
+1. **Use the same photos and options for every model.**
+2. **Rank by cells correct.** Then the next two rows tell you why one is worse: it misses
+   things, or it makes things up.
+3. **Only trust clear gaps.** A rerun of the same photo can differ by a cell or two, so with a
+   few photos treat gaps of about 2 points or less as a tie. More photos, smaller noise.
+4. **Check the speed:** seconds per page times the pages you photograph each week.
+
+In Langfuse, every folder is a dataset and every run one of its runs: open **Datasets →
+\<folder\> → Runs** to compare models, with every photo's trace and scores.
+
+## Synthetic test data
+
+Synthetic registers are drawn on the real blank page, with known answers. Writers range from
+neat to terrible, and photos from flat scans to dim and blurred:
 
 ```bash
 uv run formbench template        # once: find the grid of the blank PDF
 uv run formbench synth --name bad-poor --seed 25 --weeks 2 --messiness bad --quality poor
+uv run formbench bench --folder data/private/synthetic/bad-poor --engine ollama:qwen3.5:4b
 ```
 
-The same seed always gives the same photos.
-
-**Options:**
-
-- `--max-side 4096`: send a larger image
-- `--think`: let thinking models think
-- `VLM_TIMEOUT=900` in `.env`: allow more seconds per call
-
-## Choosing a model
-
-1. **Use the same conditions for every model:** the same folders and options.
-2. **Rank them by the "decide" scores:**
-   - `value_accuracy_after_review`: what DHIS2 would get
-   - `misread_flag_recall`: how many mistakes the reviewer gets to see
-   - `field_f1` / `tree_f1`: reading quality
-3. **Use the "reading" scores to explain why.**
-   - High ANLS with low Tree F1: it reads well but files values under the wrong column.
-   - High `omission_rate`: it skips dates.
-   - High `hallucination_rate`: it invents dates in empty cells.
-4. **Only trust clear gaps.** A rerun of the same photo can differ in a cell or two, so treat gaps of about 2 points or less as noise. A model should win in most scenarios, not just overall.
-5. **Check the cost.** Multiply `latency_s_per_page` by the pages photographed per week.
-
-In Langfuse, every folder is a dataset and every `bench` run is one of its runs. Open **Datasets → \<folder\> → Runs** to compare models side by side, with whole-run scores and every photo's trace. Every score carries its description there.
+The same seed always gives the same photos. A scenario also runs the weekly workflow with a
+stand-in reviewer who fixes only what was flagged, which adds **DHIS2 values right after
+review** (below 100% means wrong numbers nobody was warned about), **misreads flagged** and
+**flags per week**.
 
 ## Weekly use
 
@@ -113,10 +172,10 @@ The project is built so that only one folder knows about the register:
 | Keep as is | Replace for your form |
 | --- | --- |
 | `vlm.py`: one schema-constrained call to a local model, traced | `register/prompts.py`: your fields, schema and prompt |
-| `metrics.py`: CER, WER, ANLS, list matching, tree edit distance | `register/spec.py`: which field maps to which DHIS2 data element and category option combo |
+| `metrics.py`: text similarity and row matching | `register/spec.py`: which field maps to which DHIS2 data element and category option combo |
 | `evaluation/tracking.py`: Langfuse datasets, experiments, score definitions | `register/aggregate.py`: how readings become counts (a tally form may need no counting at all) |
-| `evaluation/bench.py`, `photo.py`: running models over photos with truth files | `evaluation/scoring.py`: keep the text and cell scores; the value scores call your aggregation |
-| `dhis2.py`: read-only metadata download | |
+| `evaluation/bench.py`, `photo.py`: running models over photos with truth files | `evaluation/scoring.py`: keep the cell scores; the DHIS2 value scores call your aggregation |
+| `dhis2.py`: read-only metadata download | `evaluation/truth.py`: your column letters and names |
 
 Start with 20–30 real photos and hand-made truth files in one folder, run `formbench bench` on it for each candidate model, and compare. Synthetic data helps you see failure modes; only real photos tell you how a model does on your form.
 
@@ -137,12 +196,11 @@ docs/adr/         why things are the way they are
 
 qwen3.5:4b, whole-page photos, 6 synthetic scenarios (27 photos, neat scans to terrible handwriting):
 
-- **Values after review:** 30% of daily values right
-- **Misread flag recall:** 52% of misreads flagged
-- **Field F1:** 0.58
+- **Cells correct:** 51%
+- **DHIS2 values right after review:** 30%, with 52% of misreads flagged
 - **Main failure:** dates read correctly but filed under the neighbouring narrow column
 
-Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md).
+Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md) and [ADR 0007](docs/adr/0007-fewer-plainly-named-scores.md).
 
 ## Rules this project keeps
 
@@ -151,7 +209,7 @@ Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md).
 - **Private data stays local.** Photos, the blank register, the metadata snapshot, synthetic data and results are never committed.
 - **Tests need nothing running.** No Ollama, Langfuse or network: `uv run pytest -q`.
 
-Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments.
+Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files.
 
 ## License
 

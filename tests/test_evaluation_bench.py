@@ -4,7 +4,7 @@ import json
 import pytest
 
 from formbench.evaluation.bench import _values
-from formbench.evaluation.review import flag_catch, review_and_approve, review_counts
+from formbench.evaluation.review import review_and_approve, review_counts
 from formbench.evaluation.scoring import compare_values, same_value, score_page
 from formbench.register.spec import load_spec
 from formbench.synthetic.simulate import build_truth, simulate
@@ -45,9 +45,10 @@ def test_row_and_cell_counts():
             "rows": [{"serial": "1", "sex": "F", "birth_date": "1/6/26", "card_number": "7", "opv1": "12-07-26", "opv2": "19-07-26"},
                      {"serial": "9", "sex": "M"}]}  # fmt: skip
     c = score_page(pred, truth, json_valid=True)
-    assert (c["rows"], c["rows_found"], c["rows_invented"]) == (2, 1, 1)
-    assert (c["written_cells"], c["written_missed"]) == (2, 1)  # row 2 was not found
-    assert c["blank_filled"] == 1  # opv2 made up in row 1
+    assert (c["rows"], c["rows_found"]) == (2, 1)
+    # Header 2 right; row 1: 5 right + opv2 made up; row 9 paired with row 2: only sex right.
+    assert (c["field_correct"], c["field_cells"]) == (8, 13)
+    assert (c["field_tp"], c["field_fp"], c["field_fn"]) == (8, 2, 4)
 
 
 def value(day, count, de="OPV"):
@@ -57,14 +58,13 @@ def value(day, count, de="OPV"):
 def test_value_scores():
     v = value
     s = compare_values(_values([v("1", 2), v("2", 1)]), _values([v("1", 2), v("3", 4)]))
-    assert s == {"values": 3, "values_exact": 1, "values_missing": 1, "values_extra": 1}
+    assert s == {"values": 3, "values_exact": 1}
 
 
 def test_a_perfect_reader_scores_perfectly(scenario, truth, ri_metadata, tmp_path):
-    """Feeding the true readings through review must reproduce the expected payload and
-    catch every injected problem: this checks the benchmark itself."""
+    """Feeding the true readings through review must reproduce the expected payload: this
+    checks the benchmark itself."""
     spec, labels = load_spec(ri_metadata), names(ri_metadata)
-    drafts, alarms = [], 0
     for week in truth:
         pages = [
             {"page_id": p["page_id"], **json.loads(json.dumps(p["reading"]))}
@@ -74,19 +74,15 @@ def test_a_perfect_reader_scores_perfectly(scenario, truth, ri_metadata, tmp_pat
             pages, week["photos"], COVER, spec, labels, week, go_live=GO_LIVE,
             intended_option="Outreach/Mobile", state_root=tmp_path,
         )  # fmt: skip
-        drafts.append(first)
-        review = review_counts(first["flags"], pages, week["photos"], edges(scenario))
-        assert review["misreads"] == 0
-        alarms += review["false_alarms"]
+        review = review_counts(first["flags"], pages, week["photos"])
+        assert review["misreads"] == review["misreads_flagged"] == 0
         got = approved["values"] + approved["corrections"]
         want = week["expected"]["values"] + week["expected"]["corrections"]
         scores = compare_values(_values(got), _values(want))
         assert scores["values_exact"] == scores["values"]
-    catch = flag_catch(drafts, edges(scenario), cover_flag_expected=True)
-    assert catch["edges_caught"] == catch["edges"] and alarms == 0
 
 
-def test_flags_on_misreads_count_as_caught_and_others_as_false_alarms():
+def test_a_flag_on_a_misread_counts_as_caught():
     truth = [{"page_id": "p", "reading": {"rows": [
         {"serial": "1", "sex": "F", "birth_date": "01-06-26", "opv1": "12-07-26"},
         {"serial": "2", "sex": "M", "birth_date": "02-06-26", "opv1": "12-07-26"},
@@ -95,26 +91,27 @@ def test_flags_on_misreads_count_as_caught_and_others_as_false_alarms():
         {"serial": "1", "sex": "F", "birth_date": "01-06-26", "opv1": "17-07-26"},  # misread
         {"serial": "2", "sex": "M", "birth_date": "02-06-26", "opv1": "12-07-26"},
     ]}]  # fmt: skip
-    flag = {"blocking": True, "page": "p", "code": "date_unreadable", "column": "opv1"}
-    counts = review_counts([{**flag, "serial": "1"}, {**flag, "serial": "2"}], pages, truth, [])
-    assert counts == {"misreads": 1, "misreads_flagged": 1, "false_alarms": 1}
-    # A re-read that disagrees with an approved reading is never a false alarm.
-    changed = {**flag, "code": "changed_since_approved", "serial": "2"}
-    assert review_counts([changed], pages, truth, [])["false_alarms"] == 0
+    flag = {"blocking": True, "resolved": False, "page": "p", "code": "date_unreadable", "column": "opv1"}  # fmt: skip
+    counts = review_counts([{**flag, "serial": "1"}, {**flag, "serial": "2"}], pages, truth)
+    assert counts == {"misreads": 1, "misreads_flagged": 1, "blocking_flags": 2}
+    assert review_counts([{**flag, "serial": "2"}], pages, truth)["misreads_flagged"] == 0
 
 
 def test_cli_accepts_every_option_the_commands_use():
     from formbench.cli import build_parser
 
     args = build_parser().parse_args(
-        ["bench", "--scenario", "s", "--engine", "ollama:m", "--max-side", "4096", "--think"]
+        ["bench", "--folder", "s", "--engine", "ollama:m", "--max-side", "4096", "--think"]
     )
     assert (args.max_side, args.engine, args.think) == (4096, ["ollama:m"], True)
     assert args.rescore is None and args.out.name == "bench"
+    assert build_parser().parse_args(["bench", "--scenario", "s"]).folder.name == "s"
     args = build_parser().parse_args(["eval", "--engine", "ollama:m", "--image", "p.jpg"])
     assert args.truth is None and args.metadata.name == "metadata.json"
     args = build_parser().parse_args(["compare", "a.json", "b.json"])
     assert len(args.runs) == 2
+    args = build_parser().parse_args(["compare", "--folder", "my-photos"])
+    assert args.runs == [] and args.folder == "my-photos"
 
 
 def test_engine_must_name_an_ollama_model():
@@ -130,16 +127,16 @@ def test_engine_must_name_an_ollama_model():
 def test_summary_sums_counts_across_scenarios():
     from formbench.evaluation.bench import combine
 
-    def run(cer_edits, chars, pages, values_exact):
-        counts = {"cer_edits": cer_edits, "cer_chars": chars, "pages": pages, "values": 10,
+    def run(correct, cells, pages, values_exact):
+        counts = {"field_correct": correct, "field_cells": cells, "pages": pages, "values": 10,
                   "values_exact": values_exact, "blocking_flags": 4}  # fmt: skip
         weeks = [{"pages": [{"json_valid": True}] * pages}] * 2
         return {"settings": {"engine": "ollama:m", "scenario": "s"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
 
     combined = combine([run(1, 10, 1, 10), run(9, 90, 3, 0)])["ollama:m"]
-    assert combined["cer"] == 0.1  # 10 / 100 characters, not the mean of two rates
-    assert combined["value_accuracy_after_review"] == 0.5 and combined["flags_per_week"] == 2
-    assert combined["latency_s_per_page"] == 5.0
+    assert combined["cells_correct"] == 0.1  # 10 / 100 cells, not the mean of two rates
+    assert combined["dhis2_values_right_after_review"] == 0.5 and combined["flags_per_week"] == 2
+    assert combined["seconds_per_page"] == 5.0
 
 
 class FakeLangfuse:
@@ -217,9 +214,9 @@ def test_a_scenario_run_scores_a_perfect_reader_perfectly(scenario, truth, ri_me
     result = run_bench(folder, "m", ri_metadata, langfuse=langfuse, configs={})
     assert len(langfuse.datasets["scenario"]) == len(items)  # re-syncing does not duplicate
     m = result["metrics"]
-    assert m["value_accuracy_after_review"] == 1 and m["value_accuracy_before_review"] == 1
-    assert m["field_f1"] == 1 and m["tree_f1"] == 1 and m["cover_field_accuracy"] == 1
-    assert m["latency_s_per_page"] == 2.0 and result["page_count"] == len(items) - 1
+    assert m["dhis2_values_right_after_review"] == 1 and m["dhis2_values_right"] == 1
+    assert m["cells_correct"] == 1 and "misreads_flagged" not in m  # nothing misread to flag
+    assert m["seconds_per_page"] == 2.0 and result["page_count"] == len(items) - 1
     assert {s["name"] for s in langfuse.run_scores} == set(m)
     assert len(langfuse.run_scores) == 2 * len(m)
     assert all(s["dataset_run_id"] == "run-1" for s in langfuse.run_scores)
@@ -232,17 +229,16 @@ def test_a_photo_folder_needs_a_truth_file_per_photo(ri_metadata, tmp_path, monk
                "rows": [{"serial": "1", "sex": "F", "birth_date": "01-06-26", "opv1": "12-07-26"}]}  # fmt: skip
     for name in ("a.jpg", "b.JPEG", "no-truth.png"):
         (tmp_path / name).write_bytes(b"")
-    for name in ("a", "b"):
-        (tmp_path / f"{name}.truth.json").write_text(json.dumps(reading))
+    (tmp_path / "a.json").write_text(json.dumps(reading))
+    (tmp_path / "b.truth.json").write_text(json.dumps(reading))
     items, truth, skipped = load_items(tmp_path)
     assert [i["input"]["photo"] for i in items] == ["a.jpg", "b.JPEG"] and truth is None
     assert skipped == ["no-truth.png"]
     perfect_reader(monkeypatch, {"a.jpg": reading, "b.JPEG": reading})
     result = run_bench(tmp_path, "m", ri_metadata, langfuse=FakeLangfuse(), configs=None)
-    assert (
-        result["metrics"]["field_f1"] == 1
-        and "value_accuracy_after_review" not in result["metrics"]
-    )
+    m = result["metrics"]
+    assert m["cells_correct"] == 1 and m["rows_found"] == 1 and m["valid_output"] == 1
+    assert "dhis2_values_right_after_review" not in m and "flags_per_week" not in m
     assert result["skipped"] == ["no-truth.png"] and result["failed"] == []
 
 
@@ -256,7 +252,7 @@ def test_score_definitions_are_created_once():
 
     class ScoreConfigs:
         def get(self, page, limit):
-            data = [SimpleNamespace(name="cer", id="c1", is_archived=False)]
+            data = [SimpleNamespace(name="cells_correct", id="c1", is_archived=False)]
             return SimpleNamespace(data=data, meta=SimpleNamespace(total_pages=1))
 
         def create(self, request):
@@ -264,7 +260,7 @@ def test_score_definitions_are_created_once():
             return SimpleNamespace(id=f"id-{request.name}")
 
     configs = score_configs(SimpleNamespace(api=SimpleNamespace(score_configs=ScoreConfigs())))
-    assert configs["cer"] == "c1" and len(configs) == len(SCORES)
-    assert "cer" not in {r.name for r in created} and len(created) == len(SCORES) - 1
-    cer = next(r for r in created if r.name == "field_f1")
-    assert cer.max_value == 1 and cer.description
+    assert configs["cells_correct"] == "c1" and len(configs) == len(SCORES)
+    assert "cells_correct" not in {r.name for r in created} and len(created) == len(SCORES) - 1
+    rows = next(r for r in created if r.name == "rows_found")
+    assert rows.max_value == 1 and rows.description
