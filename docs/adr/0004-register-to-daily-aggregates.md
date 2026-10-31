@@ -1,4 +1,4 @@
-# ADR 0004: Daily immunisation values from the register, with human approval
+# ADR 0004: Daily immunisation values from a paper immunisation register, with human approval
 
 - **Status:** Accepted
 - **Date:** 2026-10-28

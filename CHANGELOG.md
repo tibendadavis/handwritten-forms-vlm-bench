@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - One `formbench` command: `eval`, `bench`, `compare`, `scores`, `synth`, `template`, `metadata`, `run`, `approve`; `.env` is loaded automatically
 - VLM calls through Ollama's OpenAI-compatible API with a strict JSON Schema response format, temperature 0, fixed seed, thinking off by default (`--think`), capped output and no silent retries; every call traced in Langfuse
 - Read-only DHIS2 client: data set metadata download (`formbench metadata`) and org unit lookup by code
-- register: column-to-DHIS2 mapping from metadata, a page schema that cannot return names or contacts, strict parsing of handwritten dates and ages, whole-page reading
+- Immunisation register: column-to-DHIS2 mapping from metadata, a page schema that cannot return names or contacts, strict parsing of handwritten dates and ages, whole-page reading
 - Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
 - Weekly workflow: draft with flags, `review.html` and `decisions.yaml`, approval by a named person, `datavalueset.json` (never posted), corrections as full totals for already approved weeks
 - Synthetic registers on the real blank page: simulated children and visits over several weeks, planted edge cases, one to three writers from neat to terrible, pencil and faded ink, scan to terrible photos; same seed, same photos
