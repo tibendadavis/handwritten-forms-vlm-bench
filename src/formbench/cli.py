@@ -77,13 +77,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("data/private/synthetic"))
 
-    p = sub.add_parser("template", help="build the blank-page template from the register PDF")
+    p = sub.add_parser("template", help="build the blank-page template from the blank register PDF")
     p.add_argument("--pdf", type=Path, default=Path("data/private/samples/register.pdf"))
     p.add_argument("--out", type=Path, default=Path("data/private/register"))
 
     p = sub.add_parser("metadata", help="download DHIS2 data set metadata (read-only)")
     p.add_argument("--dataset", required=True, help="DHIS2 data set UID")
-    p.add_argument("--out", type=Path, help="folder (default schemas/<data set name>)")
+    p.add_argument("--out", type=Path, default=METADATA.parent)
 
     p = sub.add_parser("run", help="weekly: read photos into a draft for review")
     p.add_argument("--week", required=True, help="ISO week, e.g. 2026W44")

@@ -132,5 +132,5 @@ def command(args: argparse.Namespace) -> None:
     cv2.imwrite(str(args.out / "template-overlay.jpg"), overlay(image, layout))
     (args.out / "template.json").write_text(json.dumps(layout, indent=2) + "\n")
     print(
-        f"register template: {len(layout['rows'])} rows x {len(layout['columns'])} columns -> {args.out}/"
+        f"Register template: {len(layout['rows'])} rows x {len(layout['columns'])} columns -> {args.out}/"
     )

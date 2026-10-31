@@ -14,7 +14,7 @@ class DoseColumn:
     dose: int | None
 
 
-# register dose columns. Vaccine names match the data element names; UIDs are
+# Register dose columns. Vaccine names match the data element names; UIDs are
 # resolved from the data set metadata at runtime.
 DOSE_COLUMNS = (
     DoseColumn("I", "bcg", "BCG", "BCG", 0),

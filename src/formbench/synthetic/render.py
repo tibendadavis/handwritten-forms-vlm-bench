@@ -287,14 +287,13 @@ def _wrong_date(text: str, rng: random.Random) -> str:
 
 
 def render_cover(cover: dict[str, Any], writer: Writer, rng: random.Random) -> Image.Image:
-    """A register cover like the real one: printed labels, handwritten values."""
+    """A register cover: printed labels, handwritten values."""
     w, h = 3508, 2480
     page = Image.new("RGB", (w, h), (250, 247, 238))
     draw = ImageDraw.Draw(page)
     bold = ImageFont.load_default(size=110)
     draw.text((w // 2, 620), "MINISTRY OF HEALTH", font=bold, fill=(20, 20, 20), anchor="mm")
     draw.text((w // 2, 860), "IMMUNISATION (EPI) REGISTER", font=ImageFont.load_default(size=90), fill=(20, 20, 20), anchor="mm")  # fmt: skip
-    draw.text((w // 2, 1040), "REGISTER", font=ImageFont.load_default(size=90), fill=(20, 20, 20), anchor="mm")  # fmt: skip
     label = ImageFont.load_default(size=48)
     fields = [("Facility Name:", "facility_name"), ("MFL Code:", "mfl_code"),
               ("Facility Type:", "facility_type"), ("District:", "district"), ("Region:", "region")]  # fmt: skip
