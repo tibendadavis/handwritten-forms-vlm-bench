@@ -33,6 +33,7 @@ from formbench.evaluation.scoring import (
 from formbench.evaluation.tracking import evaluations, item_input, score_configs, sync_dataset
 from formbench.evaluation.truth import load_truth, truth_file
 from formbench.files import slugify, stamp, write_json
+from formbench.register.reader import clean_rows
 from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
@@ -317,6 +318,8 @@ def _rescore(path: Path, folder: Path, ds: dict[str, Any]) -> dict[str, Any]:
     if truth is not None:
         run.update(score_run(run["weeks"], truth, ds, latency))
     else:
+        for page in run["pages"]:  # saved before a cleaning rule was added
+            page["reading"]["rows"] = clean_rows(page["reading"]["rows"])
         run.update(score_photos(run["pages"], items, ds, latency))
     write_json(path, run)
     return run

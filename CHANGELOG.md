@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
 - ADRs 0003 to 0007
 
+### Fixed
+- A model reply that writes an empty cell as the text "null" or "none" is read as empty, not as an invented value; `--rescore` re-cleans saved readings
+
 ### Removed
 - Tesseract OCR baseline and its CI dependency
 - Generic printable forms (`make-form`), marker alignment and the per-field `extract` command, with their example schemas

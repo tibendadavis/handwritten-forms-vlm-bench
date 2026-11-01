@@ -16,6 +16,13 @@ from formbench.register.prompts import (
 
 # Users photograph the whole (A3) page; dates in the narrow dose columns need the detail.
 FULL_MAX_SIDE = 3072
+# Some models write an empty cell as the text "null" instead of JSON null.
+EMPTY = {"", "null", "none"}
+
+
+def _cell(value: Any) -> str | None:
+    text = "" if value is None else str(value).strip()
+    return None if text.lower() in EMPTY else text
 
 
 def clean_rows(rows: Any) -> list[dict[str, Any]]:
@@ -24,10 +31,7 @@ def clean_rows(rows: Any) -> list[dict[str, Any]]:
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict):
             continue
-        clean = {
-            k: (str(row[k]).strip() or None) if row.get(k) not in (None, "") else None
-            for k in ROW_FIELDS
-        }
+        clean = {k: _cell(row.get(k)) for k in ROW_FIELDS}
         if any(clean.values()):
             out.append(clean)
     return out
