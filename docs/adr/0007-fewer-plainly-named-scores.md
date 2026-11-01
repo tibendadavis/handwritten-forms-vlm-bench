@@ -48,3 +48,23 @@ scored only when the truth has them.
 - One table answers "which model reads this form best": the first row.
 - Langfuse gets new score names; old score definitions stay on the server unused.
 - The removed text scores can be restored from git history if a later phase needs them.
+
+## Update 2026-11-01: labels for reports
+
+The labels shown in tables were renamed so results can go into a report for non-technical
+readers. The score names (and so saved runs and Langfuse scores) are unchanged.
+
+| Score name | Label |
+| --- | --- |
+| `cells_correct` | Overall accuracy |
+| `written_cells_found` | Completeness |
+| `output_values_right` | Reliability |
+| `rows_found` | Rows detected |
+| `valid_output` | Processing success rate |
+| `dhis2_values_right` | Reporting accuracy |
+| `dhis2_values_right_after_review` | Reporting accuracy after review |
+| `misreads_flagged` | Error detection rate |
+| `flags_per_week` | Review workload (flags per week) |
+| `seconds_per_page` | Processing time (seconds per page) |
+
+Table groups: Reading accuracy, DHIS2 reporting, Performance.

@@ -42,9 +42,9 @@ PHOTO_TYPES = (".jpg", ".jpeg", ".png")
 NOT_READ = {"reading": {"cohort_month": None, "cohort_year": None, "rows": []}, "json_valid": False,
             "errors": ["not read"], "latency_s": 0.0}  # fmt: skip
 GROUPS = {
-    "reading": "How well it reads (rank models by these)",
-    "dhis2": "What DHIS2 would get",
-    "cost": "Cost",
+    "reading": "Reading accuracy",
+    "dhis2": "DHIS2 reporting",
+    "cost": "Performance",
 }
 RESULTS = Path("results/register/bench")
 

@@ -44,33 +44,33 @@ class Score:
 
 
 SCORES = [
-    Score("cells_correct", "Cells correct", "reading",
-          "THE MAIN SCORE. Every cell that has a value on the page or in the model's output: the "
-          "share where the model put the right value under the right column."),
-    Score("written_cells_found", "Written cells read right", "reading",
-          "Of the cells with something written on the page, the share the model read right. "
-          "Low: it misses or misreads what is there."),
-    Score("output_values_right", "Model's values that are right", "reading",
-          "Of the values the model returned, the share that are right. Low: it invents values or "
-          "files them under the wrong column."),
-    Score("rows_found", "Rows found", "reading",
+    Score("cells_correct", "Overall accuracy", "reading",
+          "THE MAIN SCORE. Of every cell that has a value on the page or in the model's output, "
+          "the share with the right value under the right column."),
+    Score("written_cells_found", "Completeness", "reading",
+          "Of the entries written on the page, the share the model captured correctly. Low: it "
+          "misses or misreads what is there."),
+    Score("output_values_right", "Reliability", "reading",
+          "Of the values the model reported, the share that are correct. Low: it invents values "
+          "or records them under the wrong column."),
+    Score("rows_found", "Rows detected", "reading",
           "Child rows found (matched by serial number) / rows on the page."),
-    Score("valid_output", "Valid output", "reading",
-          "Photos where the model returned JSON in the required shape. Anything less means some "
-          "photos gave nothing usable."),
-    Score("dhis2_values_right", "DHIS2 values right", "dhis2",
+    Score("valid_output", "Processing success rate", "reading",
+          "Photos for which the model returned a usable answer (JSON in the required shape). "
+          "Anything less means some photos produced nothing."),
+    Score("dhis2_values_right", "Reporting accuracy", "dhis2",
           "Daily DHIS2 values counted from the model's reading that equal those counted from the "
           "truth. Needs dose dates, birth date and sex all right, so it is stricter than cells."),
-    Score("dhis2_values_right_after_review", "DHIS2 values right after review", "dhis2",
+    Score("dhis2_values_right_after_review", "Reporting accuracy after review", "dhis2",
           "Synthetic scenarios only: the same, after a reviewer fixed everything that was "
           "flagged. Below 100% means wrong numbers nobody was warned about."),
-    Score("misreads_flagged", "Misreads flagged", "dhis2",
+    Score("misreads_flagged", "Error detection rate", "dhis2",
           "Synthetic scenarios only: of the cells the model read wrongly, the share that raised a "
           "flag, so the reviewer got to see them."),
-    Score("flags_per_week", "Flags per week", "dhis2",
-          "Synthetic scenarios only: flags a reviewer must resolve per week (workload).",
+    Score("flags_per_week", "Review workload (flags per week)", "dhis2",
+          "Synthetic scenarios only: flags a reviewer must resolve per week.",
           higher_is_better=None, max_value=None, percent=False),
-    Score("seconds_per_page", "Seconds per page", "cost",
+    Score("seconds_per_page", "Processing time (seconds per page)", "cost",
           "Time to read one page photo on this machine.",
           higher_is_better=False, max_value=None, percent=False),
 ]  # fmt: skip

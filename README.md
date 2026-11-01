@@ -85,16 +85,16 @@ Example output (one column per model):
 
 ```text
                                    qwen3.5:4b   granite-vision
-How well it reads (rank models by these)
-  Cells correct ↑                       51.0%            ...
-  Written cells read right ↑            53.4%
-  Model's values that are right ↑       63.3%
-  Rows found ↑                          98.0%
-  Valid output ↑                       100.0%
-What DHIS2 would get
-  DHIS2 values right ↑                  29.0%
-Cost
-  Seconds per page ↓                    101.1
+Reading accuracy
+  Overall accuracy ↑                    51.0%            ...
+  Completeness ↑                        53.4%
+  Reliability ↑                         63.3%
+  Rows detected ↑                       98.0%
+  Processing success rate ↑            100.0%
+DHIS2 reporting
+  Reporting accuracy ↑                  29.0%
+Performance
+  Processing time (seconds per page) ↓  101.1
 ```
 
 **4. See what one model got wrong on one photo,** cell by cell (the truth is found next to it):
@@ -116,24 +116,24 @@ under the same column. Dates count as the same if they are the same day (`5/6/26
 
 | Score | What it tells you |
 | --- | --- |
-| **Cells correct** | **The main score.** Of every cell that has a value on the page or in the output, the share that is right. |
-| Written cells read right | Of what is written on the page, how much it got right. Low: it misses or misreads. |
-| Model's values that are right | Of what it returned, how much is right. Low: it invents values or files them under the wrong column. |
-| Rows found | Child rows found, by serial number. |
-| Valid output | Photos that gave usable JSON at all. |
-| DHIS2 values right | Daily DHIS2 values counted from its reading that equal those counted from the truth. Stricter: needs birth date and sex right too. |
-| Seconds per page | Speed on this machine. |
+| **Overall accuracy** | **The main score.** Of every cell that has a value on the page or in the output, the share that is right. |
+| Completeness | Of the entries written on the page, the share captured correctly. Low: it misses or misreads. |
+| Reliability | Of the values the model reported, the share that are correct. Low: it invents values or records them under the wrong column. |
+| Rows detected | Child rows found, by serial number. |
+| Processing success rate | Photos that produced a usable answer at all. |
+| Reporting accuracy | Daily DHIS2 values counted from its reading that equal those counted from the truth. Stricter: needs birth date and sex right too. |
+| Processing time | Seconds per page on this machine. |
 
-Synthetic scenarios add three: DHIS2 values right after review, misreads flagged and flags per
-week (see below). `uv run formbench scores` prints all of them.
+Synthetic scenarios add three: reporting accuracy after review, error detection rate and review
+workload (see below). `uv run formbench scores` prints all of them.
 
 **Choosing a model:**
 
 1. **Use the same photos and options for every model.**
-2. **Rank by cells correct.** Then the next two rows tell you why one is worse: it misses
-   things, or it makes things up.
-3. **Only trust clear gaps.** A rerun of the same photo can differ by a cell or two, so with a
-   few photos treat gaps of about 2 points or less as a tie. More photos, smaller noise.
+2. **Rank by overall accuracy.** Then completeness and reliability tell you why one is worse:
+   it misses things, or it makes things up.
+3. **Only trust clear gaps.** Runs are repeatable (temperature 0, fixed seed), but with a few
+   photos one cell is several points, so treat small gaps as a tie. More photos, smaller noise.
 4. **Check the speed:** seconds per page times the pages you photograph each week.
 
 In Langfuse, every folder is a dataset and every run one of its runs: open **Datasets →
@@ -151,9 +151,9 @@ uv run formbench bench --folder data/private/synthetic/bad-poor --engine ollama:
 ```
 
 The same seed always gives the same photos. A scenario also runs the weekly workflow with a
-stand-in reviewer who fixes only what was flagged, which adds **DHIS2 values right after
-review** (below 100% means wrong numbers nobody was warned about), **misreads flagged** and
-**flags per week**.
+stand-in reviewer who fixes only what was flagged, which adds **reporting accuracy after
+review** (below 100% means wrong numbers nobody was warned about), **error detection rate**
+and **review workload**.
 
 ## Weekly use
 
@@ -196,8 +196,8 @@ docs/adr/         why things are the way they are
 
 qwen3.5:4b, whole-page photos, 6 synthetic scenarios (27 photos, neat scans to terrible handwriting):
 
-- **Cells correct:** 51%
-- **DHIS2 values right after review:** 30%, with 52% of misreads flagged
+- **Overall accuracy:** 51%
+- **Reporting accuracy after review:** 30%, with an error detection rate of 52%
 - **Main failure:** dates read correctly but filed under the neighbouring narrow column
 
 Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md) and [ADR 0007](docs/adr/0007-fewer-plainly-named-scores.md).
