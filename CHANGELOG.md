@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
 - Weekly workflow: draft with flags, `review.html` and `decisions.yaml`, approval by a named person, `datavalueset.json` (never posted), corrections as full totals for already approved weeks
 - Synthetic registers on the real blank page: simulated children and visits over several weeks, planted edge cases, one to three writers from neat to terrible, pencil and faded ink, scan to terrible photos; same seed, same photos
-- Ten scores with labels fit for a report (`formbench scores`): overall accuracy (the main score), completeness, reliability, rows detected, processing success rate, reporting accuracy (before and after review), error detection rate, review workload, processing time
+- Ten scores named for a report, the same in tables and in Langfuse (`formbench scores`): overall accuracy (the main score), completeness, reliability, rows detected, processing success rate, reporting accuracy (before and after review), error detection rate, review workload, processing time
 - Truth files next to each photo (`page.json`), with columns named by key, register letter or both; unknown columns are reported, unread personal columns ignored
 - `formbench eval`: one photo, one model, every wrong cell and the scores; finds the truth file next to the photo
 - `formbench bench --folder`: a folder of photos with truth files, or a synthetic scenario (through review and approval), for one or more models; `--rescore` saved runs

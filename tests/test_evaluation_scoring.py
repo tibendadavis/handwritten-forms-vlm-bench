@@ -24,8 +24,8 @@ def scores(predicted, truth=TRUTH, json_valid=True):
 
 def test_perfect_page_scores_perfectly():
     s = scores(copy.deepcopy(TRUTH))
-    assert s == {"cells_correct": 1, "written_cells_found": 1, "output_values_right": 1,
-                 "rows_found": 1, "valid_output": 1}  # fmt: skip
+    assert s == {"overall_accuracy": 1, "completeness": 1, "reliability": 1,
+                 "rows_detected": 1, "processing_success_rate": 1}  # fmt: skip
 
 
 def test_formatting_differences_are_not_errors():
@@ -34,7 +34,7 @@ def test_formatting_differences_are_not_errors():
     pred["rows"][0]["opv1"] = "17\n07\n26"  # stacked in a narrow column
     pred["rows"][0]["birth_date"] = "3/6/26"
     pred["rows"][1]["sex"] = "female"
-    assert scores(pred)["cells_correct"] == 1
+    assert scores(pred)["overall_accuracy"] == 1
 
 
 def test_a_value_under_the_wrong_column_counts_twice():
@@ -42,42 +42,42 @@ def test_a_value_under_the_wrong_column_counts_twice():
     pred["rows"][0]["penta1"], pred["rows"][0]["pcv1"] = None, "17-07-26"
     s = scores(pred)
     # penta1 missed and pcv1 invented: 15 right of 17 cells
-    assert s["cells_correct"] == pytest.approx(15 / 17, abs=1e-4)
-    assert s["written_cells_found"] == s["output_values_right"] == pytest.approx(15 / 16, abs=1e-4)
+    assert s["overall_accuracy"] == pytest.approx(15 / 17, abs=1e-4)
+    assert s["completeness"] == s["reliability"] == pytest.approx(15 / 16, abs=1e-4)
 
 
 def test_missed_values_lower_found_and_invented_values_lower_right():
     pred = copy.deepcopy(TRUTH)
     pred["rows"][1]["opv0"] = None
     s = scores(pred)
-    assert s["written_cells_found"] == pytest.approx(15 / 16, abs=1e-4)
-    assert s["output_values_right"] == 1
+    assert s["completeness"] == pytest.approx(15 / 16, abs=1e-4)
+    assert s["reliability"] == 1
     pred = copy.deepcopy(TRUTH)
     pred["rows"][1]["opv1"] = "12-07-26"
     s = scores(pred)
-    assert s["written_cells_found"] == 1
-    assert s["output_values_right"] == pytest.approx(16 / 17, abs=1e-4)
+    assert s["completeness"] == 1
+    assert s["reliability"] == pytest.approx(16 / 17, abs=1e-4)
 
 
 def test_invented_and_missing_rows():
     pred = copy.deepcopy(TRUTH)
     pred["rows"].append({"serial": "3", "sex": "F", "opv0": "11-06-26"})
     s = scores(pred)
-    assert s["cells_correct"] == pytest.approx(16 / 19, abs=1e-4) and s["rows_found"] == 1
+    assert s["overall_accuracy"] == pytest.approx(16 / 19, abs=1e-4) and s["rows_detected"] == 1
     pred = copy.deepcopy(TRUTH)
     pred["rows"].pop()
     s = scores(pred)
-    assert s["cells_correct"] == pytest.approx(10 / 16, abs=1e-4) and s["rows_found"] == 0.5
+    assert s["overall_accuracy"] == pytest.approx(10 / 16, abs=1e-4) and s["rows_detected"] == 0.5
 
 
 def test_the_cohort_counts_only_when_the_truth_has_it():
     truth = {"rows": copy.deepcopy(TRUTH["rows"])}
-    assert scores(copy.deepcopy(TRUTH), truth)["cells_correct"] == 1
+    assert scores(copy.deepcopy(TRUTH), truth)["overall_accuracy"] == 1
 
 
-def test_invalid_json_shows_in_valid_output():
+def test_invalid_json_lowers_the_processing_success_rate():
     pages = [score_page(copy.deepcopy(TRUTH), TRUTH, True), score_page({"rows": []}, TRUTH, False)]
-    assert metrics(sum_counts(pages))["valid_output"] == 0.5
+    assert metrics(sum_counts(pages))["processing_success_rate"] == 0.5
 
 
 def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
@@ -95,15 +95,15 @@ def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
 def test_dhis2_values(ri_metadata):
     spec = load_spec(ri_metadata)
     perfect = metrics(score_page(copy.deepcopy(TRUTH), TRUTH, True, spec))
-    assert perfect["dhis2_values_right"] == 1
+    assert perfect["reporting_accuracy"] == 1
     pred = copy.deepcopy(TRUTH)
     pred["rows"][0]["penta1"], pred["rows"][0]["pcv1"] = None, "17-07-26"  # filed one column off
     s = metrics(score_page(pred, TRUTH, True, spec))
-    assert 0 < s["dhis2_values_right"] < 1
-    assert "dhis2_values_right" not in metrics(score_page(pred, TRUTH, True))
+    assert 0 < s["reporting_accuracy"] < 1
+    assert "reporting_accuracy" not in metrics(score_page(pred, TRUTH, True))
     no_cohort = {"rows": TRUTH["rows"]}  # counted with the model's cohort
     assert (
-        metrics(score_page(copy.deepcopy(TRUTH), no_cohort, True, spec))["dhis2_values_right"] == 1
+        metrics(score_page(copy.deepcopy(TRUTH), no_cohort, True, spec))["reporting_accuracy"] == 1
     )
 
 

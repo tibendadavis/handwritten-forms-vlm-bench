@@ -49,22 +49,25 @@ scored only when the truth has them.
 - Langfuse gets new score names; old score definitions stay on the server unused.
 - The removed text scores can be restored from git history if a later phase needs them.
 
-## Update 2026-11-01: labels for reports
+## Update 2026-11-01: names and labels for reports
 
-The labels shown in tables were renamed so results can go into a report for non-technical
-readers. The score names (and so saved runs and Langfuse scores) are unchanged.
+Results are going into a report for non-technical readers, so every score was renamed, both its
+label in tables and its name in Langfuse, which now match. Saved runs are unaffected: scores
+are recomputed from their counts, whose names did not change. Langfuse gets new score
+definitions under the new names; the old ones stay on the server unused, and earlier Langfuse
+runs keep the old names.
 
-| Score name | Label |
-| --- | --- |
-| `cells_correct` | Overall accuracy |
-| `written_cells_found` | Completeness |
-| `output_values_right` | Reliability |
-| `rows_found` | Rows detected |
-| `valid_output` | Processing success rate |
-| `dhis2_values_right` | Reporting accuracy |
-| `dhis2_values_right_after_review` | Reporting accuracy after review |
-| `misreads_flagged` | Error detection rate |
-| `flags_per_week` | Review workload (flags per week) |
-| `seconds_per_page` | Processing time (seconds per page) |
+| Old name | Name in Langfuse | Label |
+| --- | --- | --- |
+| `cells_correct` | `overall_accuracy` | Overall accuracy |
+| `written_cells_found` | `completeness` | Completeness |
+| `output_values_right` | `reliability` | Reliability |
+| `rows_found` | `rows_detected` | Rows detected |
+| `valid_output` | `processing_success_rate` | Processing success rate |
+| `dhis2_values_right` | `reporting_accuracy` | Reporting accuracy |
+| `dhis2_values_right_after_review` | `reporting_accuracy_after_review` | Reporting accuracy after review |
+| `misreads_flagged` | `error_detection_rate` | Error detection rate |
+| `flags_per_week` | `review_workload` | Review workload (flags per week) |
+| `seconds_per_page` | `processing_time` | Processing time (seconds per page) |
 
 Table groups: Reading accuracy, DHIS2 reporting, Performance.

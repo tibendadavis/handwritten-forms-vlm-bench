@@ -134,9 +134,9 @@ def test_summary_sums_counts_across_scenarios():
         return {"settings": {"engine": "ollama:m", "scenario": "s"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
 
     combined = combine([run(1, 10, 1, 10), run(9, 90, 3, 0)])["ollama:m"]
-    assert combined["cells_correct"] == 0.1  # 10 / 100 cells, not the mean of two rates
-    assert combined["dhis2_values_right_after_review"] == 0.5 and combined["flags_per_week"] == 2
-    assert combined["seconds_per_page"] == 5.0
+    assert combined["overall_accuracy"] == 0.1  # 10 / 100 cells, not the mean of two rates
+    assert combined["reporting_accuracy_after_review"] == 0.5 and combined["review_workload"] == 2
+    assert combined["processing_time"] == 5.0
 
 
 class FakeLangfuse:
@@ -214,9 +214,9 @@ def test_a_scenario_run_scores_a_perfect_reader_perfectly(scenario, truth, ri_me
     result = run_bench(folder, "m", ri_metadata, langfuse=langfuse, configs={})
     assert len(langfuse.datasets["scenario"]) == len(items)  # re-syncing does not duplicate
     m = result["metrics"]
-    assert m["dhis2_values_right_after_review"] == 1 and m["dhis2_values_right"] == 1
-    assert m["cells_correct"] == 1 and "misreads_flagged" not in m  # nothing misread to flag
-    assert m["seconds_per_page"] == 2.0 and result["page_count"] == len(items) - 1
+    assert m["reporting_accuracy_after_review"] == 1 and m["reporting_accuracy"] == 1
+    assert m["overall_accuracy"] == 1 and "error_detection_rate" not in m  # nothing misread to flag
+    assert m["processing_time"] == 2.0 and result["page_count"] == len(items) - 1
     assert {s["name"] for s in langfuse.run_scores} == set(m)
     assert len(langfuse.run_scores) == 2 * len(m)
     assert all(s["dataset_run_id"] == "run-1" for s in langfuse.run_scores)
@@ -237,8 +237,10 @@ def test_a_photo_folder_needs_a_truth_file_per_photo(ri_metadata, tmp_path, monk
     perfect_reader(monkeypatch, {"a.jpg": reading, "b.JPEG": reading})
     result = run_bench(tmp_path, "m", ri_metadata, langfuse=FakeLangfuse(), configs=None)
     m = result["metrics"]
-    assert m["cells_correct"] == 1 and m["rows_found"] == 1 and m["valid_output"] == 1
-    assert "dhis2_values_right_after_review" not in m and "flags_per_week" not in m
+    assert (
+        m["overall_accuracy"] == 1 and m["rows_detected"] == 1 and m["processing_success_rate"] == 1
+    )
+    assert "reporting_accuracy_after_review" not in m and "review_workload" not in m
     assert result["skipped"] == ["no-truth.png"] and result["failed"] == []
 
 
@@ -252,7 +254,7 @@ def test_score_definitions_are_created_once():
 
     class ScoreConfigs:
         def get(self, page, limit):
-            data = [SimpleNamespace(name="cells_correct", id="c1", is_archived=False)]
+            data = [SimpleNamespace(name="overall_accuracy", id="c1", is_archived=False)]
             return SimpleNamespace(data=data, meta=SimpleNamespace(total_pages=1))
 
         def create(self, request):
@@ -260,7 +262,7 @@ def test_score_definitions_are_created_once():
             return SimpleNamespace(id=f"id-{request.name}")
 
     configs = score_configs(SimpleNamespace(api=SimpleNamespace(score_configs=ScoreConfigs())))
-    assert configs["cells_correct"] == "c1" and len(configs) == len(SCORES)
-    assert "cells_correct" not in {r.name for r in created} and len(created) == len(SCORES) - 1
-    rows = next(r for r in created if r.name == "rows_found")
+    assert configs["overall_accuracy"] == "c1" and len(configs) == len(SCORES)
+    assert "overall_accuracy" not in {r.name for r in created} and len(created) == len(SCORES) - 1
+    rows = next(r for r in created if r.name == "rows_detected")
     assert rows.max_value == 1 and rows.description

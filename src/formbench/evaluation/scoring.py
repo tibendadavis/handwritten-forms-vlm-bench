@@ -44,33 +44,33 @@ class Score:
 
 
 SCORES = [
-    Score("cells_correct", "Overall accuracy", "reading",
+    Score("overall_accuracy", "Overall accuracy", "reading",
           "THE MAIN SCORE. Of every cell that has a value on the page or in the model's output, "
           "the share with the right value under the right column."),
-    Score("written_cells_found", "Completeness", "reading",
+    Score("completeness", "Completeness", "reading",
           "Of the entries written on the page, the share the model captured correctly. Low: it "
           "misses or misreads what is there."),
-    Score("output_values_right", "Reliability", "reading",
+    Score("reliability", "Reliability", "reading",
           "Of the values the model reported, the share that are correct. Low: it invents values "
           "or records them under the wrong column."),
-    Score("rows_found", "Rows detected", "reading",
+    Score("rows_detected", "Rows detected", "reading",
           "Child rows found (matched by serial number) / rows on the page."),
-    Score("valid_output", "Processing success rate", "reading",
+    Score("processing_success_rate", "Processing success rate", "reading",
           "Photos for which the model returned a usable answer (JSON in the required shape). "
           "Anything less means some photos produced nothing."),
-    Score("dhis2_values_right", "Reporting accuracy", "dhis2",
+    Score("reporting_accuracy", "Reporting accuracy", "dhis2",
           "Daily DHIS2 values counted from the model's reading that equal those counted from the "
           "truth. Needs dose dates, birth date and sex all right, so it is stricter than cells."),
-    Score("dhis2_values_right_after_review", "Reporting accuracy after review", "dhis2",
+    Score("reporting_accuracy_after_review", "Reporting accuracy after review", "dhis2",
           "Synthetic scenarios only: the same, after a reviewer fixed everything that was "
           "flagged. Below 100% means wrong numbers nobody was warned about."),
-    Score("misreads_flagged", "Error detection rate", "dhis2",
+    Score("error_detection_rate", "Error detection rate", "dhis2",
           "Synthetic scenarios only: of the cells the model read wrongly, the share that raised a "
           "flag, so the reviewer got to see them."),
-    Score("flags_per_week", "Review workload (flags per week)", "dhis2",
+    Score("review_workload", "Review workload (flags per week)", "dhis2",
           "Synthetic scenarios only: flags a reviewer must resolve per week.",
           higher_is_better=None, max_value=None, percent=False),
-    Score("seconds_per_page", "Processing time (seconds per page)", "cost",
+    Score("processing_time", "Processing time (seconds per page)", "cost",
           "Time to read one page photo on this machine.",
           higher_is_better=False, max_value=None, percent=False),
 ]  # fmt: skip
@@ -199,17 +199,17 @@ def metrics(c: dict[str, float], *, weeks: int | None = None, latency: float | N
     pages = c.get("pages", 0)
     tp = c.get("field_tp", 0)
     values = {
-        "cells_correct": _rate(c.get("field_correct", 0), c.get("field_cells", 0)),
-        "written_cells_found": _rate(tp, tp + c.get("field_fn", 0)),
-        "output_values_right": _rate(tp, tp + c.get("field_fp", 0)),
-        "rows_found": _rate(c.get("rows_found", 0), c.get("rows", 0)),
-        "valid_output": _rate(c.get("json_valid", 0), pages),
-        "dhis2_values_right": _rate(c.get("raw_values_exact", 0), c.get("raw_values", 0)),
-        "dhis2_values_right_after_review": _rate(c.get("values_exact", 0), c.get("values", 0)),
-        "misreads_flagged": _rate(c.get("misreads_flagged", 0), c.get("misreads", 0)),
-        "flags_per_week": round(c["blocking_flags"] / weeks, 2)
+        "overall_accuracy": _rate(c.get("field_correct", 0), c.get("field_cells", 0)),
+        "completeness": _rate(tp, tp + c.get("field_fn", 0)),
+        "reliability": _rate(tp, tp + c.get("field_fp", 0)),
+        "rows_detected": _rate(c.get("rows_found", 0), c.get("rows", 0)),
+        "processing_success_rate": _rate(c.get("json_valid", 0), pages),
+        "reporting_accuracy": _rate(c.get("raw_values_exact", 0), c.get("raw_values", 0)),
+        "reporting_accuracy_after_review": _rate(c.get("values_exact", 0), c.get("values", 0)),
+        "error_detection_rate": _rate(c.get("misreads_flagged", 0), c.get("misreads", 0)),
+        "review_workload": round(c["blocking_flags"] / weeks, 2)
         if weeks and "blocking_flags" in c
         else None,  # fmt: skip
-        "seconds_per_page": round(latency / pages, 1) if latency is not None and pages else None,
+        "processing_time": round(latency / pages, 1) if latency is not None and pages else None,
     }
     return {s.name: values[s.name] for s in SCORES if values[s.name] is not None}
