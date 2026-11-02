@@ -22,7 +22,9 @@ DESCRIPTION = (
 )
 METADATA = Path("schemas/dataset/metadata.json")
 ENGINE_HELP = "ollama:<model-tag>, e.g. ollama:qwen3.5:4b"
-MAX_SIDE_HELP = "longest image side sent to the model in pixels (default 3072)"
+MAX_SIDE_HELP = (
+    "longest image side sent to the model in pixels (default 4032; smaller photos are sent as is)"
+)
 PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
                "(default: production)")  # fmt: skip
 

@@ -25,6 +25,7 @@ from formbench.evaluation.review import review_and_approve, review_counts
 from formbench.evaluation.scoring import (
     SCORES,
     Score,
+    comments,
     compare_values,
     metrics,
     score_page,
@@ -34,12 +35,14 @@ from formbench.evaluation.tracking import evaluations, item_input, score_configs
 from formbench.evaluation.truth import load_truth, truth_file
 from formbench.files import slugify, stamp, write_json
 from formbench.register.prompts import load_prompt
-from formbench.register.reader import clean_rows, prompt_version
+from formbench.register.reader import FULL_MAX_SIDE, clean_rows, prompt_version
 from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
 
 PHOTO_TYPES = (".jpg", ".jpeg", ".png")
+# Runs saved before the default became 4032 recorded no size: they were read at 3072.
+OLD_DEFAULT_MAX_SIDE = 3072
 NOT_READ = {"reading": {"cohort_month": None, "cohort_year": None, "rows": []}, "json_valid": False,
             "errors": ["not read"], "latency_s": 0.0}  # fmt: skip
 GROUPS = {
@@ -95,12 +98,15 @@ def read_item(folder: Path, item: dict[str, Any], model: str, *, think: bool = F
     return {**result, "latency_s": round(time.perf_counter() - start, 1)}
 
 
-def photo_scores(output: dict[str, Any], expected: Any, spec: RegisterSpec) -> dict[str, float]:
-    """Scores for one photo against its truth (the cover of a scenario is read, not scored)."""
+def photo_scores(output: dict[str, Any], expected: Any, spec: RegisterSpec) -> tuple[dict[str, float], dict[str, str]]:  # fmt: skip
+    """Scores for one photo against its truth, and a comment on each saying how it was worked
+    out (the cover of a scenario is read, not scored)."""
     if "cover" in output:
-        return {}
+        return {}, {}
     counts = score_page(output["reading"], expected, output["json_valid"], spec)
-    return metrics(counts, latency=output["latency_s"])
+    return metrics(counts, latency=output["latency_s"]), comments(
+        counts, latency=output["latency_s"]
+    )
 
 
 def _values(rows: list[dict[str, Any]]) -> dict[tuple[str, str, str], int]:
@@ -172,9 +178,10 @@ def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, spec
         item = {"photo": photo.name, "kind": "page"}
         result = read_item(photo.parent, item, model, think=think, max_side=max_side, prompts={"page": prompt})  # fmt: skip
         if truth is not None:
-            result["scores"] = photo_scores(result, truth, spec)
+            result["scores"], result["score_comments"] = photo_scores(result, truth, spec)
             for name, value in result["scores"].items():
-                span.score(name=name, value=float(value), config_id=(configs or {}).get(name))
+                span.score(name=name, value=float(value), config_id=(configs or {}).get(name),
+                           comment=result["score_comments"].get(name))  # fmt: skip
     return result
 
 
@@ -191,7 +198,8 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
         raise SystemExit(f"formbench bench: no photo in {folder} has a truth file")
     spec = load_spec(ds)
     version = prompt_version((prompts or {}).get("page"))
-    settings = {"folder": folder.name, "model": model, "think": think, "max_side": max_side,
+    side = max_side or FULL_MAX_SIDE
+    settings = {"folder": folder.name, "model": model, "think": think, "max_side": side,
                 "prompt_version": version}  # fmt: skip
     data = items
     if configs is not None:
@@ -203,10 +211,11 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
         return read_item(folder, photo, model, think=think, max_side=max_side, prompts=prompts)
 
     def evaluator(*, output: dict[str, Any], expected_output: Any, **_: Any) -> list[Any]:
-        return evaluations(photo_scores(output, expected_output, spec), configs or {})
+        scores, notes = photo_scores(output, expected_output, spec)
+        return evaluations(scores, configs or {}, notes)
 
     run_name = " ".join([model, *([f"prompt v{version}"] if version else []), *(["think"] if think else []),
-                         *([f"max-side {max_side}"] if max_side else []), stamp()])  # fmt: skip
+                         *([f"max-side {side}"] if side != FULL_MAX_SIDE else []), stamp()])  # fmt: skip
     result = langfuse.run_experiment(
         name=folder.name, run_name=run_name, data=data, task=task, evaluators=[evaluator],
         max_concurrency=1, metadata=settings,
@@ -228,9 +237,10 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
                               "reading": output["reading"]})  # fmt: skip
         record = {**score_photos(pages_out, items, ds, latency), "pages": pages_out}
     if result.dataset_run_id:
+        notes = comments(record["counts"], weeks=len(truth["weeks"]) if truth else None, latency=latency)  # fmt: skip
         for name, value in record["metrics"].items():
-            langfuse.create_score(dataset_run_id=result.dataset_run_id, name=name,
-                                  value=float(value), config_id=(configs or {}).get(name))  # fmt: skip
+            langfuse.create_score(dataset_run_id=result.dataset_run_id, name=name, value=float(value),
+                                  config_id=(configs or {}).get(name), comment=notes.get(name))  # fmt: skip
     langfuse.flush()
     return {**record, "latency_s": round(latency, 1), "page_count": sum(i["input"]["kind"] == "page" for i in items),  # fmt: skip
             "run_name": run_name, "dataset_run_url": result.dataset_run_url, "failed": failed,
@@ -268,10 +278,12 @@ def page_count(run: dict[str, Any]) -> int:
 
 
 def run_label(settings: dict[str, Any]) -> str:
-    """The engine and, when the run used a Langfuse prompt, its version: each prompt version
-    of a model gets its own column."""
+    """The engine, its Langfuse prompt version and, when not the default, the image size: each
+    prompt version and image size of a model gets its own column."""
     version = settings.get("prompt_version")
-    return f"{settings['engine']} prompt v{version}" if version else settings["engine"]
+    side = settings.get("max_side") or OLD_DEFAULT_MAX_SIDE
+    return " ".join([settings["engine"], *([f"prompt v{version}"] if version else []),
+                     *([f"{side}px"] if side != FULL_MAX_SIDE else [])])  # fmt: skip
 
 
 def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -375,7 +387,7 @@ def command(args: argparse.Namespace) -> None:
         result = run_bench(folder, model, ds, langfuse=langfuse, configs=configs,
                            think=args.think, max_side=args.max_side, prompts=prompts)  # fmt: skip
         settings = {"scenario": folder.name, "engine": engine, "think": args.think,
-                    "max_side": args.max_side, "prompt_version": version}  # fmt: skip
+                    "max_side": args.max_side or FULL_MAX_SIDE, "prompt_version": version}  # fmt: skip
         path = write_json(args.out / f"{stamp()}_{folder.name}_{slugify(engine)}.json", {"settings": settings, **result})  # fmt: skip
         for note, photos in (("not read (failed)", result["failed"]), ("skipped (no truth file)", result["skipped"])):  # fmt: skip
             if photos:

@@ -142,7 +142,7 @@ def test_summary_sums_counts_across_scenarios():
         counts = {"field_correct": correct, "field_cells": cells, "pages": pages, "values": 10,
                   "values_exact": values_exact, "blocking_flags": 4}  # fmt: skip
         weeks = [{"pages": [{"json_valid": True}] * pages}] * 2
-        return {"settings": {"engine": "ollama:m", "scenario": "s"}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
+        return {"settings": {"engine": "ollama:m", "scenario": "s", "max_side": 4032}, "counts": counts, "weeks": weeks, "latency_s": 10}  # fmt: skip
 
     combined = combine([run(1, 10, 1, 10), run(9, 90, 3, 0)])["ollama:m"]
     assert combined["overall_accuracy"] == 0.1  # 10 / 100 cells, not the mean of two rates
@@ -158,8 +158,26 @@ def test_each_prompt_version_of_a_model_is_its_own_column():
         return {"settings": settings, "counts": {"field_correct": correct, "field_cells": 10, "pages": 1}}  # fmt: skip
 
     combined = combine([run(1, 5), run(2, 9), run(2, 7), run(None, 1)])
-    assert set(combined) == {"ollama:m prompt v1", "ollama:m prompt v2", "ollama:m"}
-    assert combined["ollama:m prompt v2"]["overall_accuracy"] == 0.8
+    assert set(combined) == {
+        "ollama:m prompt v1 3072px",
+        "ollama:m prompt v2 3072px",
+        "ollama:m 3072px",
+    }
+    assert combined["ollama:m prompt v2 3072px"]["overall_accuracy"] == 0.8
+
+
+def test_each_image_size_is_its_own_column_and_old_runs_were_read_at_3072():
+    from formbench.evaluation.bench import run_label
+
+    assert (
+        run_label({"engine": "ollama:m", "prompt_version": 3, "max_side": 4032})
+        == "ollama:m prompt v3"
+    )
+    assert (
+        run_label({"engine": "ollama:m", "prompt_version": 3, "max_side": None})
+        == "ollama:m prompt v3 3072px"
+    )
+    assert run_label({"engine": "ollama:m", "max_side": 1600}) == "ollama:m 1600px"
 
 
 class FakeLangfuse:

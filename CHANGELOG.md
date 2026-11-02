@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Deterministic daily aggregation by dose date with provenance; Children vaccinated as distinct children; blocking flags instead of guesses
 - Weekly workflow: draft with flags, `review.html` and `decisions.yaml`, approval by a named person, `datavalueset.json` (never posted), corrections as full totals for already approved weeks
 - Synthetic registers on the real blank page: simulated children and visits over several weeks, planted edge cases, one to three writers from neat to terrible, pencil and faded ink, scan to terrible photos; same seed, same photos
+- Every score in Langfuse carries a comment for non-technical readers: what it means and how it was worked out, with the numbers ("right cells ÷ cells with a value … = 278 ÷ 357")
 - Ten scores named for a report, the same in tables and in Langfuse (`formbench scores`): overall accuracy (the main score), completeness, reliability, rows detected, processing success rate, reporting accuracy (before and after review), error detection rate, review workload, processing time
 - Truth files next to each photo (`page.json`), with columns named by key, register letter or both; unknown columns are reported, unread personal columns ignored
 - `formbench eval`: one photo, one model, every wrong cell and the scores; finds the truth file next to the photo
@@ -23,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
 - Prompts versioned in Langfuse prompt management: the prompt in code is saved as version 1 (`production`); `--prompt <version|label>` on `bench` and `eval`; every model call linked to its prompt version; runs named, saved and compared per prompt version; weekly runs use the `production` version
 - ADRs 0003 to 0008
+
+### Changed
+- Photos are sent at up to 4032 px on the long side (was 3072), a 12 MP phone photo as taken; each run records the size it used and `compare` shows runs at another size in their own column
 
 ### Fixed
 - A model reply that writes an empty cell as the text "null" or "none" is read as empty, not as an invented value; `--rescore` re-cleans saved readings

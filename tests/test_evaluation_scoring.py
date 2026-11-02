@@ -111,3 +111,20 @@ def test_every_score_is_described_once():
     names = [s.name for s in SCORES]
     assert len(names) == len(set(names))
     assert all(s.label and s.description and s.group in ("reading", "dhis2", "cost") for s in SCORES)  # fmt: skip
+
+
+def test_each_score_has_a_plain_comment_with_its_numbers():
+    from formbench.evaluation.scoring import comments, metrics
+
+    counts = {"pages": 2, "json_valid": 2, "field_cells": 228, "field_correct": 190, "field_tp": 190,
+              "field_fp": 20, "field_fn": 30, "rows": 24, "rows_found": 22}  # fmt: skip
+    notes = comments(counts, latency=361.0)
+    assert set(notes) == set(metrics(counts, latency=361.0))  # a comment for every score sent
+    assert notes["overall_accuracy"] == (
+        "How many cells were read correctly: right cells ÷ cells with a value on the page or in "
+        "the reading = 190 ÷ 228"
+    )
+    assert notes["completeness"].endswith("= 190 ÷ 220") and notes["reliability"].endswith(
+        "= 190 ÷ 210"
+    )
+    assert notes["processing_time"].endswith("seconds ÷ photos = 361 ÷ 2")
