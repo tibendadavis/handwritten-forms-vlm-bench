@@ -106,7 +106,8 @@ uv run formbench eval --engine ollama:qwen3.5:4b --image data/private/photos/my-
 No truth yet? Run `eval` on the photo anyway, then correct the reading it saves into a truth
 file.
 
-**Options:** `--max-side 4096` sends a larger image, `--think` lets thinking models think, and
+**Options:** `--max-side 3072` sends a smaller image (the default, 4032, is a 12 MP phone photo as
+taken; smaller photos are never enlarged), `--think` lets thinking models think, and
 `VLM_TIMEOUT=900` in `.env` allows more seconds per call.
 
 ## What the scores mean

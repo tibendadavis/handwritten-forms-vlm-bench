@@ -34,12 +34,14 @@ from formbench.evaluation.tracking import evaluations, item_input, score_configs
 from formbench.evaluation.truth import load_truth, truth_file
 from formbench.files import slugify, stamp, write_json
 from formbench.register.prompts import load_prompt
-from formbench.register.reader import clean_rows, prompt_version
+from formbench.register.reader import FULL_MAX_SIDE, clean_rows, prompt_version
 from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
 
 PHOTO_TYPES = (".jpg", ".jpeg", ".png")
+# Runs saved before the default became 4032 recorded no size: they were read at 3072.
+OLD_DEFAULT_MAX_SIDE = 3072
 NOT_READ = {"reading": {"cohort_month": None, "cohort_year": None, "rows": []}, "json_valid": False,
             "errors": ["not read"], "latency_s": 0.0}  # fmt: skip
 GROUPS = {
@@ -191,7 +193,8 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
         raise SystemExit(f"formbench bench: no photo in {folder} has a truth file")
     spec = load_spec(ds)
     version = prompt_version((prompts or {}).get("page"))
-    settings = {"folder": folder.name, "model": model, "think": think, "max_side": max_side,
+    side = max_side or FULL_MAX_SIDE
+    settings = {"folder": folder.name, "model": model, "think": think, "max_side": side,
                 "prompt_version": version}  # fmt: skip
     data = items
     if configs is not None:
@@ -206,7 +209,7 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
         return evaluations(photo_scores(output, expected_output, spec), configs or {})
 
     run_name = " ".join([model, *([f"prompt v{version}"] if version else []), *(["think"] if think else []),
-                         *([f"max-side {max_side}"] if max_side else []), stamp()])  # fmt: skip
+                         *([f"max-side {side}"] if side != FULL_MAX_SIDE else []), stamp()])  # fmt: skip
     result = langfuse.run_experiment(
         name=folder.name, run_name=run_name, data=data, task=task, evaluators=[evaluator],
         max_concurrency=1, metadata=settings,
@@ -268,10 +271,12 @@ def page_count(run: dict[str, Any]) -> int:
 
 
 def run_label(settings: dict[str, Any]) -> str:
-    """The engine and, when the run used a Langfuse prompt, its version: each prompt version
-    of a model gets its own column."""
+    """The engine, its Langfuse prompt version and, when not the default, the image size: each
+    prompt version and image size of a model gets its own column."""
     version = settings.get("prompt_version")
-    return f"{settings['engine']} prompt v{version}" if version else settings["engine"]
+    side = settings.get("max_side") or OLD_DEFAULT_MAX_SIDE
+    return " ".join([settings["engine"], *([f"prompt v{version}"] if version else []),
+                     *([f"{side}px"] if side != FULL_MAX_SIDE else [])])  # fmt: skip
 
 
 def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -375,7 +380,7 @@ def command(args: argparse.Namespace) -> None:
         result = run_bench(folder, model, ds, langfuse=langfuse, configs=configs,
                            think=args.think, max_side=args.max_side, prompts=prompts)  # fmt: skip
         settings = {"scenario": folder.name, "engine": engine, "think": args.think,
-                    "max_side": args.max_side, "prompt_version": version}  # fmt: skip
+                    "max_side": args.max_side or FULL_MAX_SIDE, "prompt_version": version}  # fmt: skip
         path = write_json(args.out / f"{stamp()}_{folder.name}_{slugify(engine)}.json", {"settings": settings, **result})  # fmt: skip
         for note, photos in (("not read (failed)", result["failed"]), ("skipped (no truth file)", result["skipped"])):  # fmt: skip
             if photos:

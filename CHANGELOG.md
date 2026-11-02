@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Prompts versioned in Langfuse prompt management: the prompt in code is saved as version 1 (`production`); `--prompt <version|label>` on `bench` and `eval`; every model call linked to its prompt version; runs named, saved and compared per prompt version; weekly runs use the `production` version
 - ADRs 0003 to 0008
 
+### Changed
+- Photos are sent at up to 4032 px on the long side (was 3072), a 12 MP phone photo as taken; each run records the size it used and `compare` shows runs at another size in their own column
+
 ### Fixed
 - A model reply that writes an empty cell as the text "null" or "none" is read as empty, not as an invented value; `--rescore` re-cleans saved readings
 

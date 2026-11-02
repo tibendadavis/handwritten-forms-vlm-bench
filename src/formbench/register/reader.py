@@ -14,7 +14,8 @@ from formbench.register.prompts import (
 )
 
 # Users photograph the whole (A3) page; dates in the narrow dose columns need the detail.
-FULL_MAX_SIDE = 3072
+# 4032 px is a 12 MP phone photo as taken: larger photos are shrunk, smaller ones sent as is.
+FULL_MAX_SIDE = 4032
 # Some models write an empty cell as the text "null" instead of JSON null.
 EMPTY = {"", "null", "none"}
 

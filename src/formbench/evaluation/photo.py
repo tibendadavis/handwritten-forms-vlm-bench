@@ -70,7 +70,7 @@ def command(args: argparse.Namespace) -> None:
     from formbench.evaluation.bench import read_scored_page, score_table
     from formbench.evaluation.tracking import score_configs
     from formbench.register.prompts import load_prompt
-    from formbench.register.reader import prompt_version
+    from formbench.register.reader import FULL_MAX_SIDE, prompt_version
     from formbench.register.spec import load_spec
 
     model = model_tag(args.engine)
@@ -83,7 +83,7 @@ def command(args: argparse.Namespace) -> None:
     except Exception:  # Langfuse not reachable: scores are still printed and saved
         configs = {}
     prompt = load_prompt(langfuse, "page", args.prompt)
-    settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side,
+    settings = {"engine": args.engine, "image": str(image), "max_side": args.max_side or FULL_MAX_SIDE,
                 "think": args.think, "has_truth": truth is not None,
                 "prompt_version": prompt_version(prompt)}  # fmt: skip
     try:
