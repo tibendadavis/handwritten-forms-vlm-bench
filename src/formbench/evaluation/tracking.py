@@ -46,12 +46,18 @@ def score_configs(langfuse: Any) -> dict[str, str]:
     return existing
 
 
-def evaluations(scores: dict[str, float], configs: dict[str, str]) -> list[Any]:
-    """Scores as Langfuse evaluations, each tied to its score definition when there is one."""
+def evaluations(scores: dict[str, float], configs: dict[str, str], notes: dict[str, str] | None = None) -> list[Any]:  # fmt: skip
+    """Scores as Langfuse evaluations, each tied to its score definition when there is one and
+    with a comment saying what it means and how it was worked out (scoring.comments)."""
     from langfuse import Evaluation
 
     return [
-        Evaluation(name=name, value=float(value), config_id=configs.get(name))
+        Evaluation(
+            name=name,
+            value=float(value),
+            config_id=configs.get(name),
+            comment=(notes or {}).get(name),
+        )  # fmt: skip
         for name, value in scores.items()
         if name in BY_NAME
     ]

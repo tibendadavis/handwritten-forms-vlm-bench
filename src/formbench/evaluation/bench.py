@@ -25,6 +25,7 @@ from formbench.evaluation.review import review_and_approve, review_counts
 from formbench.evaluation.scoring import (
     SCORES,
     Score,
+    comments,
     compare_values,
     metrics,
     score_page,
@@ -97,12 +98,15 @@ def read_item(folder: Path, item: dict[str, Any], model: str, *, think: bool = F
     return {**result, "latency_s": round(time.perf_counter() - start, 1)}
 
 
-def photo_scores(output: dict[str, Any], expected: Any, spec: RegisterSpec) -> dict[str, float]:
-    """Scores for one photo against its truth (the cover of a scenario is read, not scored)."""
+def photo_scores(output: dict[str, Any], expected: Any, spec: RegisterSpec) -> tuple[dict[str, float], dict[str, str]]:  # fmt: skip
+    """Scores for one photo against its truth, and a comment on each saying how it was worked
+    out (the cover of a scenario is read, not scored)."""
     if "cover" in output:
-        return {}
+        return {}, {}
     counts = score_page(output["reading"], expected, output["json_valid"], spec)
-    return metrics(counts, latency=output["latency_s"])
+    return metrics(counts, latency=output["latency_s"]), comments(
+        counts, latency=output["latency_s"]
+    )
 
 
 def _values(rows: list[dict[str, Any]]) -> dict[tuple[str, str, str], int]:
@@ -174,9 +178,10 @@ def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, spec
         item = {"photo": photo.name, "kind": "page"}
         result = read_item(photo.parent, item, model, think=think, max_side=max_side, prompts={"page": prompt})  # fmt: skip
         if truth is not None:
-            result["scores"] = photo_scores(result, truth, spec)
+            result["scores"], result["score_comments"] = photo_scores(result, truth, spec)
             for name, value in result["scores"].items():
-                span.score(name=name, value=float(value), config_id=(configs or {}).get(name))
+                span.score(name=name, value=float(value), config_id=(configs or {}).get(name),
+                           comment=result["score_comments"].get(name))  # fmt: skip
     return result
 
 
@@ -206,7 +211,8 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
         return read_item(folder, photo, model, think=think, max_side=max_side, prompts=prompts)
 
     def evaluator(*, output: dict[str, Any], expected_output: Any, **_: Any) -> list[Any]:
-        return evaluations(photo_scores(output, expected_output, spec), configs or {})
+        scores, notes = photo_scores(output, expected_output, spec)
+        return evaluations(scores, configs or {}, notes)
 
     run_name = " ".join([model, *([f"prompt v{version}"] if version else []), *(["think"] if think else []),
                          *([f"max-side {side}"] if side != FULL_MAX_SIDE else []), stamp()])  # fmt: skip
@@ -231,9 +237,10 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
                               "reading": output["reading"]})  # fmt: skip
         record = {**score_photos(pages_out, items, ds, latency), "pages": pages_out}
     if result.dataset_run_id:
+        notes = comments(record["counts"], weeks=len(truth["weeks"]) if truth else None, latency=latency)  # fmt: skip
         for name, value in record["metrics"].items():
-            langfuse.create_score(dataset_run_id=result.dataset_run_id, name=name,
-                                  value=float(value), config_id=(configs or {}).get(name))  # fmt: skip
+            langfuse.create_score(dataset_run_id=result.dataset_run_id, name=name, value=float(value),
+                                  config_id=(configs or {}).get(name), comment=notes.get(name))  # fmt: skip
     langfuse.flush()
     return {**record, "latency_s": round(latency, 1), "page_count": sum(i["input"]["kind"] == "page" for i in items),  # fmt: skip
             "run_name": run_name, "dataset_run_url": result.dataset_run_url, "failed": failed,

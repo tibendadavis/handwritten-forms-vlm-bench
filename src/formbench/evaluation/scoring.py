@@ -41,38 +41,50 @@ class Score:
     higher_is_better: bool | None = True  # None: neither (a workload)
     max_value: float | None = 1.0  # None: unbounded (counts, seconds)
     percent: bool = True
+    meaning: str = ""  # one plain sentence for the comment on each score in Langfuse
+    formula: str = ""  # the division, in words; the comment adds the numbers
 
 
 SCORES = [
     Score("overall_accuracy", "Overall accuracy", "reading",
           "THE MAIN SCORE. Of every cell that has a value on the page or in the model's output, "
-          "the share with the right value under the right column."),
+          "the share with the right value under the right column.",
+          meaning="How many cells were read correctly", formula="right cells ÷ cells with a value on the page or in the reading"),
     Score("completeness", "Completeness", "reading",
           "Of the entries written on the page, the share the model captured correctly. Low: it "
-          "misses or misreads what is there."),
+          "misses or misreads what is there.",
+          meaning="How much of what is written was captured", formula="entries read right ÷ entries written on the page"),
     Score("reliability", "Reliability", "reading",
           "Of the values the model reported, the share that are correct. Low: it invents values "
-          "or records them under the wrong column."),
+          "or records them under the wrong column.",
+          meaning="How much of what the model reported is true", formula="values right ÷ values the model reported"),
     Score("rows_detected", "Rows detected", "reading",
-          "Child rows found (matched by serial number) / rows on the page."),
+          "Child rows found (matched by serial number) / rows on the page.",
+          meaning="How many children's rows were found", formula="rows found by serial number ÷ rows on the page"),
     Score("processing_success_rate", "Processing success rate", "reading",
           "Photos for which the model returned a usable answer (JSON in the required shape). "
-          "Anything less means some photos produced nothing."),
+          "Anything less means some photos produced nothing.",
+          meaning="How many photos gave a usable answer", formula="usable answers ÷ photos"),
     Score("reporting_accuracy", "Reporting accuracy", "dhis2",
           "Daily DHIS2 values counted from the model's reading that equal those counted from the "
-          "truth. Needs dose dates, birth date and sex all right, so it is stricter than cells."),
+          "truth. Needs dose dates, birth date and sex all right, so it is stricter than cells.",
+          meaning="How many daily DHIS2 numbers would be right", formula="numbers equal to the truth's ÷ all daily numbers"),
     Score("reporting_accuracy_after_review", "Reporting accuracy after review", "dhis2",
           "Synthetic scenarios only: the same, after a reviewer fixed everything that was "
-          "flagged. Below 100% means wrong numbers nobody was warned about."),
+          "flagged. Below 100% means wrong numbers nobody was warned about.",
+          meaning="How many daily DHIS2 numbers are right after review", formula="numbers equal to the truth's ÷ all daily numbers"),
     Score("error_detection_rate", "Error detection rate", "dhis2",
           "Synthetic scenarios only: of the cells the model read wrongly, the share that raised a "
-          "flag, so the reviewer got to see them."),
+          "flag, so the reviewer got to see them.",
+          meaning="How many misreads were flagged for a reviewer", formula="flagged misreads ÷ all misreads"),
     Score("review_workload", "Review workload (flags per week)", "dhis2",
           "Synthetic scenarios only: flags a reviewer must resolve per week.",
-          higher_is_better=None, max_value=None, percent=False),
+          higher_is_better=None, max_value=None, percent=False,
+          meaning="How many flags a reviewer must resolve each week", formula="flags ÷ weeks"),
     Score("processing_time", "Processing time (seconds per page)", "cost",
           "Time to read one page photo on this machine.",
-          higher_is_better=False, max_value=None, percent=False),
+          higher_is_better=False, max_value=None, percent=False,
+          meaning="How long one photo takes to read", formula="seconds ÷ photos"),
 ]  # fmt: skip
 BY_NAME = {s.name: s for s in SCORES}
 
@@ -193,23 +205,48 @@ def _rate(a: float, b: float) -> float | None:
     return round(a / b, 4) if b else None
 
 
+def _parts(c: dict[str, float], weeks: int | None, latency: float | None) -> dict[str, tuple[float, float]]:  # fmt: skip
+    """Each score as the division it is: (numerator, denominator). A zero denominator means
+    the counts cannot support the score."""
+    pages, tp = c.get("pages", 0), c.get("field_tp", 0)
+    return {
+        "overall_accuracy": (c.get("field_correct", 0), c.get("field_cells", 0)),
+        "completeness": (tp, tp + c.get("field_fn", 0)),
+        "reliability": (tp, tp + c.get("field_fp", 0)),
+        "rows_detected": (c.get("rows_found", 0), c.get("rows", 0)),
+        "processing_success_rate": (c.get("json_valid", 0), pages),
+        "reporting_accuracy": (c.get("raw_values_exact", 0), c.get("raw_values", 0)),
+        "reporting_accuracy_after_review": (c.get("values_exact", 0), c.get("values", 0)),
+        "error_detection_rate": (c.get("misreads_flagged", 0), c.get("misreads", 0)),
+        "review_workload": (c["blocking_flags"], weeks)
+        if weeks and "blocking_flags" in c
+        else (0, 0),  # fmt: skip
+        "processing_time": (latency, pages) if latency is not None else (0, 0),
+    }
+
+
 def metrics(c: dict[str, float], *, weeks: int | None = None, latency: float | None = None) -> dict[str, float | None]:  # fmt: skip
     """Scores from summed counts, in SCORES order. A score the counts cannot support (review
     scores for a photo folder, DHIS2 values without metadata) is left out."""
-    pages = c.get("pages", 0)
-    tp = c.get("field_tp", 0)
-    values = {
-        "overall_accuracy": _rate(c.get("field_correct", 0), c.get("field_cells", 0)),
-        "completeness": _rate(tp, tp + c.get("field_fn", 0)),
-        "reliability": _rate(tp, tp + c.get("field_fp", 0)),
-        "rows_detected": _rate(c.get("rows_found", 0), c.get("rows", 0)),
-        "processing_success_rate": _rate(c.get("json_valid", 0), pages),
-        "reporting_accuracy": _rate(c.get("raw_values_exact", 0), c.get("raw_values", 0)),
-        "reporting_accuracy_after_review": _rate(c.get("values_exact", 0), c.get("values", 0)),
-        "error_detection_rate": _rate(c.get("misreads_flagged", 0), c.get("misreads", 0)),
-        "review_workload": round(c["blocking_flags"] / weeks, 2)
-        if weeks and "blocking_flags" in c
-        else None,  # fmt: skip
-        "processing_time": round(latency / pages, 1) if latency is not None and pages else None,
-    }
-    return {s.name: values[s.name] for s in SCORES if values[s.name] is not None}
+    places = {"review_workload": 2, "processing_time": 1}
+    out = {}
+    for s in SCORES:
+        a, b = _parts(c, weeks, latency)[s.name]
+        if b:
+            out[s.name] = round(a / b, places.get(s.name, 4))
+    return out
+
+
+def _number(x: float) -> str:
+    return str(int(x)) if float(x).is_integer() else f"{x:.1f}"
+
+
+def comments(c: dict[str, float], *, weeks: int | None = None, latency: float | None = None) -> dict[str, str]:  # fmt: skip
+    """For each score in metrics(): what it means and how it was worked out, with the numbers,
+    e.g. "How many cells were read correctly: right cells ÷ cells with a value ... = 190 ÷ 228"."""
+    out = {}
+    for s in SCORES:
+        a, b = _parts(c, weeks, latency)[s.name]
+        if b:
+            out[s.name] = f"{s.meaning}: {s.formula} = {_number(a)} ÷ {_number(b)}"
+    return out

@@ -92,7 +92,8 @@ def command(args: argparse.Namespace) -> None:
             result = read_scored_page(image, truth, model, spec, think=args.think,
                                       max_side=args.max_side, configs=configs, prompt=prompt)  # fmt: skip
             for name, value in (result.get("scores") or {}).items():
-                langfuse.score_current_trace(name=name, value=float(value), config_id=configs.get(name))  # fmt: skip
+                langfuse.score_current_trace(name=name, value=float(value), config_id=configs.get(name),
+                                             comment=result["score_comments"].get(name))  # fmt: skip
             trace_id = langfuse.get_current_trace_id()
     finally:
         langfuse.flush()
