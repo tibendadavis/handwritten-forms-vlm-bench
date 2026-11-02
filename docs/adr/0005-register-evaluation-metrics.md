@@ -1,6 +1,6 @@
 # ADR 0005: Text, field and structure scores for register transcription
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR 0007](0007-fewer-plainly-named-scores.md) (scores renamed and reduced)
 - **Date:** 2026-10-28
 
 ## Context

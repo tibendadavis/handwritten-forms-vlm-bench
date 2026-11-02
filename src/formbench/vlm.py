@@ -87,8 +87,11 @@ def complete_json(
     metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
     max_tokens: int = MAX_TOKENS,
+    langfuse_prompt: Any = None,
 ) -> str | None:
     """One schema-constrained call to an Ollama model with an image; traced by Langfuse.
+    With `langfuse_prompt` (the Langfuse prompt `prompt` was compiled from) the trace is
+    linked to that prompt version.
 
     A reply cut off at max_tokens is returned as is; it fails JSON parsing and is recorded as
     json_valid = 0 by the caller.
@@ -127,6 +130,7 @@ def complete_json(
         },
         name=name,
         metadata={"think": think, **(metadata or {})},
+        langfuse_prompt=langfuse_prompt,
         **options,
     )
     return response.choices[0].message.content

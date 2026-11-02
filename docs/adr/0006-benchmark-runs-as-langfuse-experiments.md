@@ -1,6 +1,6 @@
 # ADR 0006: Benchmark runs as Langfuse experiments, one score catalogue
 
-- **Status:** Accepted
+- **Status:** Accepted; its score list is replaced by [ADR 0007](0007-fewer-plainly-named-scores.md)
 - **Date:** 2026-10-30
 
 ## Context

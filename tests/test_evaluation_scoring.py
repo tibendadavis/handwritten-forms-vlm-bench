@@ -2,7 +2,7 @@ import copy
 
 import pytest
 
-from formbench.evaluation.scoring import SCORES, metrics, schema_pass, score_cover, score_page
+from formbench.evaluation.scoring import SCORES, metrics, score_page, sum_counts
 from formbench.register.spec import load_spec
 
 TRUTH = {
@@ -15,17 +15,17 @@ TRUTH = {
          "age": "2/7", "opv0": "10-06-26", "opv1": None, "penta1": None},
     ],
 }  # fmt: skip
+# 16 written cells: month, year, 8 in row 1, 6 in row 2.
 
 
-def scores(predicted, json_valid=True):
-    return metrics(score_page(predicted, TRUTH, json_valid))
+def scores(predicted, truth=TRUTH, json_valid=True):
+    return metrics(score_page(predicted, truth, json_valid))
 
 
 def test_perfect_page_scores_perfectly():
     s = scores(copy.deepcopy(TRUTH))
-    assert s["cer"] == 0 and s["wer"] == 0
-    assert s["anls"] == s["anlsl"] == s["field_accuracy"] == s["field_f1"] == 1
-    assert s["stp_rate"] == s["ganted"] == s["tree_f1"] == s["schema_pass_rate"] == 1
+    assert s == {"overall_accuracy": 1, "completeness": 1, "reliability": 1,
+                 "rows_detected": 1, "processing_success_rate": 1}  # fmt: skip
 
 
 def test_formatting_differences_are_not_errors():
@@ -33,54 +33,51 @@ def test_formatting_differences_are_not_errors():
     pred["cohort_month"], pred["cohort_year"] = "06", "26"
     pred["rows"][0]["opv1"] = "17\n07\n26"  # stacked in a narrow column
     pred["rows"][0]["birth_date"] = "3/6/26"
-    s = scores(pred)
-    assert s["field_accuracy"] == 1 and s["tree_f1"] == 1 and s["stp_rate"] == 1
+    pred["rows"][1]["sex"] = "female"
+    assert scores(pred)["overall_accuracy"] == 1
 
 
-def test_value_in_the_wrong_column_hurts_structure_more_than_text():
+def test_a_value_under_the_wrong_column_counts_twice():
     pred = copy.deepcopy(TRUTH)
-    pred["rows"][0]["penta1"], pred["rows"][0]["opv1"] = None, "17-07-26"
-    pred["rows"][0]["opv0"] = None
-    pred["rows"][0]["polio"] = "05-06-26"  # OPV 0 date read into the Polio column
+    pred["rows"][0]["penta1"], pred["rows"][0]["pcv1"] = None, "17-07-26"
     s = scores(pred)
-    assert s["field_f1"] < 1 and s["tree_f1"] < 1 and s["stp_rate"] == 0
-    assert s["ganted"] < 1
+    # penta1 missed and pcv1 invented: 15 right of 17 cells
+    assert s["overall_accuracy"] == pytest.approx(15 / 17, abs=1e-4)
+    assert s["completeness"] == s["reliability"] == pytest.approx(15 / 16, abs=1e-4)
 
 
-def test_misread_digit_costs_little_cer_but_breaks_the_field():
+def test_missed_values_lower_found_and_invented_values_lower_right():
     pred = copy.deepcopy(TRUTH)
-    pred["rows"][0]["opv1"] = "17-01-26"
+    pred["rows"][1]["opv0"] = None
     s = scores(pred)
-    assert 0 < s["cer"] < 0.05
-    assert s["field_accuracy"] < 1 and s["anls"] > 0.9
+    assert s["completeness"] == pytest.approx(15 / 16, abs=1e-4)
+    assert s["reliability"] == 1
+    pred = copy.deepcopy(TRUTH)
+    pred["rows"][1]["opv1"] = "12-07-26"
+    s = scores(pred)
+    assert s["completeness"] == 1
+    assert s["reliability"] == pytest.approx(16 / 17, abs=1e-4)
 
 
 def test_invented_and_missing_rows():
     pred = copy.deepcopy(TRUTH)
     pred["rows"].append({"serial": "3", "sex": "F", "opv0": "11-06-26"})
-    assert scores(pred)["anlsl"] == pytest.approx(2 / 3, abs=1e-4)
+    s = scores(pred)
+    assert s["overall_accuracy"] == pytest.approx(16 / 19, abs=1e-4) and s["rows_detected"] == 1
     pred = copy.deepcopy(TRUTH)
     pred["rows"].pop()
     s = scores(pred)
-    assert s["anlsl"] == pytest.approx(0.5, abs=1e-4) and s["stp_rate"] == 0
+    assert s["overall_accuracy"] == pytest.approx(10 / 16, abs=1e-4) and s["rows_detected"] == 0.5
 
 
-def test_schema_pass_needs_valid_json_and_dhis2_formats():
-    assert schema_pass(TRUTH, json_valid=True)
-    assert not schema_pass(TRUTH, json_valid=False)
-    bad = copy.deepcopy(TRUTH)
-    bad["rows"][0]["opv1"] = "31-02-26"
-    assert not schema_pass(bad, json_valid=True)
-    bad = copy.deepcopy(TRUTH)
-    bad["rows"][1]["sex"] = "X"
-    assert not schema_pass(bad, json_valid=True)
+def test_the_cohort_counts_only_when_the_truth_has_it():
+    truth = {"rows": copy.deepcopy(TRUTH["rows"])}
+    assert scores(copy.deepcopy(TRUTH), truth)["overall_accuracy"] == 1
 
 
-def test_cover_text_scores():
-    truth = {"facility_name": "Riverside Health Centre", "mfl_code": "MFL-1234"}
-    counts = score_cover({"facility_name": "Riverside Helth Centre", "mfl_code": "MFL-1234"}, truth)  # fmt: skip
-    s = metrics(counts)
-    assert 0 < s["cer"] < 0.05 and s["cover_field_accuracy"] == 0.5
+def test_invalid_json_lowers_the_processing_success_rate():
+    pages = [score_page(copy.deepcopy(TRUTH), TRUTH, True), score_page({"rows": []}, TRUTH, False)]
+    assert metrics(sum_counts(pages))["processing_success_rate"] == 0.5
 
 
 def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
@@ -95,19 +92,22 @@ def test_eval_differences_list_wrong_cells_missing_and_invented_rows():
     assert ("9", "(whole row)", "absent", "invented") in diffs
 
 
-def test_daily_values_before_review(ri_metadata):
+def test_dhis2_values(ri_metadata):
     spec = load_spec(ri_metadata)
     perfect = metrics(score_page(copy.deepcopy(TRUTH), TRUTH, True, spec))
-    assert perfect["value_accuracy_before_review"] == 1
+    assert perfect["reporting_accuracy"] == 1
     pred = copy.deepcopy(TRUTH)
     pred["rows"][0]["penta1"], pred["rows"][0]["pcv1"] = None, "17-07-26"  # filed one column off
     s = metrics(score_page(pred, TRUTH, True, spec))
-    assert 0 < s["value_accuracy_before_review"] < 1
-    assert "value_accuracy_before_review" not in metrics(score_page(pred, TRUTH, True))
+    assert 0 < s["reporting_accuracy"] < 1
+    assert "reporting_accuracy" not in metrics(score_page(pred, TRUTH, True))
+    no_cohort = {"rows": TRUTH["rows"]}  # counted with the model's cohort
+    assert (
+        metrics(score_page(copy.deepcopy(TRUTH), no_cohort, True, spec))["reporting_accuracy"] == 1
+    )
 
 
 def test_every_score_is_described_once():
     names = [s.name for s in SCORES]
     assert len(names) == len(set(names))
-    assert all(s.description and s.group in ("decide", "reading", "review", "cost") for s in SCORES)
-    assert set(scores(copy.deepcopy(TRUTH))) <= set(names)
+    assert all(s.label and s.description and s.group in ("reading", "dhis2", "cost") for s in SCORES)  # fmt: skip

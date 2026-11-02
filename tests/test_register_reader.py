@@ -27,9 +27,14 @@ def test_a_timed_out_call_is_an_invalid_reading_not_a_crash(monkeypatch):
         raise openai.APITimeoutError(request=httpx.Request("POST", "http://localhost"))
 
     monkeypatch.setattr(vlm, "complete_json", stuck)
-    result = _call(None, page_schema(), "prompt", "model", False, 100, "test")
+    result = _call(None, page_schema(), "page", None, "model", False, 100)
     assert result["json_valid"] is False and result["values"]["rows"] is None
     assert "timed out" in result["errors"][0]
+
+
+def test_the_text_null_is_an_empty_cell():
+    rows = clean_rows([{"serial": "1", "bcg": "null", "opv0": " None "}, {"serial": "NULL"}])
+    assert rows == [{**dict.fromkeys(rows[0]), "serial": "1"}]
 
 
 def test_clean_rows_handles_a_failed_reading():

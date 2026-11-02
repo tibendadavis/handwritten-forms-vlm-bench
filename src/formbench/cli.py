@@ -1,8 +1,8 @@
 """The `formbench` command. Every subcommand and option is defined here.
 
 formbench eval      one photo, one model: reading, wrong cells, scores
-formbench bench     a scenario (photos + truth), one or more models, end to end
-formbench compare   combine saved benchmark runs per model
+formbench bench     a folder of photos with their truth, one or more models
+formbench compare   every model that ran on a folder, side by side
 formbench synth     make a synthetic handwritten scenario with known answers
 formbench template  build the blank-page template the synthetic pages are drawn on
 formbench metadata  download DHIS2 data set metadata (read-only)
@@ -23,6 +23,8 @@ DESCRIPTION = (
 METADATA = Path("schemas/dataset/metadata.json")
 ENGINE_HELP = "ollama:<model-tag>, e.g. ollama:qwen3.5:4b"
 MAX_SIDE_HELP = "longest image side sent to the model in pixels (default 3072)"
+PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
+               "(default: production)")  # fmt: skip
 
 
 def model_tag(engine: str) -> str:
@@ -39,28 +41,31 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("eval", help="test one photo with one model")
     p.add_argument("--engine", required=True, help=ENGINE_HELP)
     p.add_argument("--image", type=Path, help="a register page photo")
-    p.add_argument("--truth", type=Path, help="what is really written on --image (JSON)")
+    p.add_argument("--truth", type=Path,
+                   help="what is really written on --image (default: <image>.json next to it)")  # fmt: skip
     p.add_argument("--scenario", type=Path, help="synthetic scenario folder (truth comes from it)")
     p.add_argument("--photo", help="photo inside the scenario, e.g. week-01/page-2026-07-s1.jpg")
     p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
+    p.add_argument("--prompt", help=PROMPT_HELP)
     p.add_argument("--think", action="store_true", help="let thinking models think")
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("results/register/eval"))
 
-    p = sub.add_parser("bench", help="benchmark models on a scenario, end to end")
-    p.add_argument("--scenario", type=Path, required=True,
-                   help="a synthetic scenario (with truth.json), or a folder of photos each with "
-                        "a <photo>.truth.json next to it")  # fmt: skip
+    p = sub.add_parser("bench", help="score models on a folder of photos with their truth")
+    p.add_argument("--folder", "--scenario", dest="folder", type=Path, required=True,
+                   help="photos each with a <photo>.json truth next to it, or a synthetic "
+                        "scenario (truth.json)")  # fmt: skip
     p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
     p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
     p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
+    p.add_argument("--prompt", help=PROMPT_HELP)
     p.add_argument("--think", action="store_true", help="let thinking models think")
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("results/register/bench"))
 
-    p = sub.add_parser("compare", help="combine saved benchmark runs per model")
-    p.add_argument("runs", type=Path, nargs="+", help="results/register/bench/*.json")
-    p.add_argument("--metadata", type=Path, default=METADATA)
+    p = sub.add_parser("compare", help="every model that ran on a folder, side by side")
+    p.add_argument("runs", type=Path, nargs="*", help="saved runs (default: all in results/register/bench)")  # fmt: skip
+    p.add_argument("--folder", help="only runs on this folder (its name, e.g. my-photos)")
 
     sub.add_parser("scores", help="what every score means")
 

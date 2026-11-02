@@ -6,16 +6,22 @@ from pathlib import Path
 from typing import Any
 
 from formbench.register.prompts import (
-    REGISTER_PROMPT_VERSION,
+    PROMPT_NAMES,
     ROW_FIELDS,
-    cover_prompt,
     cover_schema,
-    page_prompt,
+    default_prompt,
     page_schema,
 )
 
 # Users photograph the whole (A3) page; dates in the narrow dose columns need the detail.
 FULL_MAX_SIDE = 3072
+# Some models write an empty cell as the text "null" instead of JSON null.
+EMPTY = {"", "null", "none"}
+
+
+def _cell(value: Any) -> str | None:
+    text = "" if value is None else str(value).strip()
+    return None if text.lower() in EMPTY else text
 
 
 def clean_rows(rows: Any) -> list[dict[str, Any]]:
@@ -24,26 +30,30 @@ def clean_rows(rows: Any) -> list[dict[str, Any]]:
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict):
             continue
-        clean = {
-            k: (str(row[k]).strip() or None) if row.get(k) not in (None, "") else None
-            for k in ROW_FIELDS
-        }
+        clean = {k: _cell(row.get(k)) for k in ROW_FIELDS}
         if any(clean.values()):
             out.append(clean)
     return out
 
 
-def _call(image, schema, prompt, model, think, max_side, name):
-    """One model call. A timeout is recorded as an invalid reply (nothing read), not a crash,
-    so one stuck page cannot stop a whole benchmark; other errors (e.g. Ollama down) raise."""
+def prompt_version(prompt: Any) -> int | None:
+    """The Langfuse version of a prompt; None for the prompt in code."""
+    return None if prompt is None else prompt.version
+
+
+def _call(image, schema, kind, prompt, model, think, max_side):
+    """One model call with the Langfuse `prompt` (None: the prompt in code). A timeout is
+    recorded as an invalid reply (nothing read), not a crash, so one stuck page cannot stop a
+    whole benchmark; other errors (e.g. Ollama down) raise."""
     import openai
 
     from formbench.vlm import complete_json, interpret
 
+    text = default_prompt(kind) if prompt is None else prompt.compile()
     try:
         raw = complete_json(
-            image, schema, prompt, model, think=think, max_side=max_side, name=name,
-            metadata={"prompt_version": REGISTER_PROMPT_VERSION},
+            image, schema, text, model, think=think, max_side=max_side, name=PROMPT_NAMES[kind],
+            metadata={"prompt_version": prompt_version(prompt)}, langfuse_prompt=prompt,
         )  # fmt: skip
     except openai.APITimeoutError:
         return {"raw": None, "values": dict.fromkeys(schema["properties"]), "json_valid": False,
@@ -51,9 +61,11 @@ def _call(image, schema, prompt, model, think, max_side, name):
     return interpret(raw, schema)
 
 
-def read_page(photo: Path, model: str, *, think: bool = False, max_side: int = FULL_MAX_SIDE) -> dict[str, Any]:  # fmt: skip
-    """Transcribe one cohort page photo. Returns the reading plus validity and the raw reply."""
-    result = _call(photo, page_schema(), page_prompt(), model, think, max_side, "register-page")
+def read_page(photo: Path, model: str, *, think: bool = False, max_side: int = FULL_MAX_SIDE,
+              prompt: Any = None) -> dict[str, Any]:  # fmt: skip
+    """Transcribe one cohort page photo with a Langfuse prompt (None: the prompt in code).
+    Returns the reading plus validity and the raw reply."""
+    result = _call(photo, page_schema(), "page", prompt, model, think, max_side)
     values = result["values"]
     reading = {
         "cohort_month": values.get("cohort_month"),
@@ -64,7 +76,7 @@ def read_page(photo: Path, model: str, *, think: bool = False, max_side: int = F
             "raw": result["raw"]}  # fmt: skip
 
 
-def read_cover(photo: Path, model: str, *, think: bool = False) -> dict[str, Any]:
-    result = _call(photo, cover_schema(), cover_prompt(), model, think, FULL_MAX_SIDE, "register-cover")  # fmt: skip
+def read_cover(photo: Path, model: str, *, think: bool = False, prompt: Any = None) -> dict[str, Any]:  # fmt: skip
+    result = _call(photo, cover_schema(), "cover", prompt, model, think, FULL_MAX_SIDE)
     return {"cover": result["values"], "json_valid": result["json_valid"],
             "errors": result["errors"], "raw": result["raw"]}  # fmt: skip
