@@ -65,6 +65,10 @@ def column(raw: str) -> str | None:
             if COLUMNS[key][0] != letter:
                 raise TruthError(f"{raw!r}: column {letter} is not {key} (that is column {COLUMNS[key][0]})")  # fmt: skip
             return key
+        if (
+            letter in BY_LETTER
+        ):  # a name written another way ("Rotavirus_dose_1_W"): the letter decides
+            return BY_LETTER[letter]
     if name.upper() == "C":
         raise TruthError(f"{raw!r}: column C holds two values; call them birth_date and age")
     if name.upper() in BY_LETTER:
@@ -117,6 +121,11 @@ def truth_file(photo: Path) -> Path | None:
 
 def load_truth(path: Path) -> dict[str, Any]:
     try:
-        return normalize(json.loads(path.read_text()))
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"{path}: not valid JSON at line {error.lineno}, column {error.colno} "
+                         f"({error.msg}). Numbers with leading zeros need quotes: \"0001\".") from None  # fmt: skip
+    try:
+        return normalize(data)
     except TruthError as error:
         raise SystemExit(f"{path}: {error}") from None

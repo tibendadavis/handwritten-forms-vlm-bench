@@ -11,13 +11,15 @@ from formbench.evaluation.truth import TruthError, column, load_truth, normalize
      ("L - OPV 1", "opv1"), ("Pentavalent 1", "penta1"), ("penta_1", "penta1"),
      ("A", "serial"), ("Serial Number", "serial"), ("D", "card_number"), ("Card No", "card_number"),
      ("G", "sex"), ("Date of birth", "birth_date"), ("C_birth_date", "birth_date"),
-     ("age", "age"), ("Y", "mcv2"), ("J", "polio")],
+     ("age", "age"), ("Y", "mcv2"), ("J", "polio"), ("Serial_number_A", "serial"),
+     ("Birth_date_C", "birth_date"), ("Rotavirus_dose_1_W", "rota1")],
 )  # fmt: skip
 def test_a_column_can_be_named_by_key_letter_or_both(raw, key):
     assert column(raw) == key
 
 
-@pytest.mark.parametrize("raw", ["E", "child_name", "Mother/Guardian", "F phone", "H", "village", "AB"])  # fmt: skip
+@pytest.mark.parametrize("raw", ["E", "child_name", "Mother/Guardian", "F phone", "H", "village", "AB",
+                                 "Date_of_first_visit_B", "Mobile_number_F"])  # fmt: skip
 def test_columns_the_model_does_not_read_are_ignored(raw):
     assert column(raw) is None
 
@@ -48,4 +50,7 @@ def test_the_truth_file_sits_next_to_its_photo(tmp_path):
     (tmp_path / "page.json").write_text(json.dumps([{"serial": "1", "bogus": "x"}]))
     assert truth_file(photo) == tmp_path / "page.json"
     with pytest.raises(SystemExit, match="row 1: unknown column 'bogus'"):
+        load_truth(truth_file(photo))
+    (tmp_path / "page.json").write_text('[{"serial": 0001}]')
+    with pytest.raises(SystemExit, match="line 1, column 14.*need quotes"):
         load_truth(truth_file(photo))
