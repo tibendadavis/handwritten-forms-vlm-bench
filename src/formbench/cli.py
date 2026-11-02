@@ -23,6 +23,8 @@ DESCRIPTION = (
 METADATA = Path("schemas/dataset/metadata.json")
 ENGINE_HELP = "ollama:<model-tag>, e.g. ollama:qwen3.5:4b"
 MAX_SIDE_HELP = "longest image side sent to the model in pixels (default 3072)"
+PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
+               "(default: production)")  # fmt: skip
 
 
 def model_tag(engine: str) -> str:
@@ -44,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--scenario", type=Path, help="synthetic scenario folder (truth comes from it)")
     p.add_argument("--photo", help="photo inside the scenario, e.g. week-01/page-2026-07-s1.jpg")
     p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
+    p.add_argument("--prompt", help=PROMPT_HELP)
     p.add_argument("--think", action="store_true", help="let thinking models think")
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("results/register/eval"))
@@ -55,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
     p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
     p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
+    p.add_argument("--prompt", help=PROMPT_HELP)
     p.add_argument("--think", action="store_true", help="let thinking models think")
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("results/register/bench"))

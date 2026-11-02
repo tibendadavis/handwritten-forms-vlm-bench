@@ -101,13 +101,24 @@ def test_cli_accepts_every_option_the_commands_use():
     from formbench.cli import build_parser
 
     args = build_parser().parse_args(
-        ["bench", "--folder", "s", "--engine", "ollama:m", "--max-side", "4096", "--think"]
+        [
+            "bench",
+            "--folder",
+            "s",
+            "--engine",
+            "ollama:m",
+            "--max-side",
+            "4096",
+            "--think",
+            "--prompt",
+            "3",
+        ]
     )
-    assert (args.max_side, args.engine, args.think) == (4096, ["ollama:m"], True)
+    assert (args.max_side, args.engine, args.think, args.prompt) == (4096, ["ollama:m"], True, "3")
     assert args.rescore is None and args.out.name == "bench"
     assert build_parser().parse_args(["bench", "--scenario", "s"]).folder.name == "s"
     args = build_parser().parse_args(["eval", "--engine", "ollama:m", "--image", "p.jpg"])
-    assert args.truth is None and args.metadata.name == "metadata.json"
+    assert args.truth is None and args.metadata.name == "metadata.json" and args.prompt is None
     args = build_parser().parse_args(["compare", "a.json", "b.json"])
     assert len(args.runs) == 2
     args = build_parser().parse_args(["compare", "--folder", "my-photos"])
@@ -137,6 +148,18 @@ def test_summary_sums_counts_across_scenarios():
     assert combined["overall_accuracy"] == 0.1  # 10 / 100 cells, not the mean of two rates
     assert combined["reporting_accuracy_after_review"] == 0.5 and combined["review_workload"] == 2
     assert combined["processing_time"] == 5.0
+
+
+def test_each_prompt_version_of_a_model_is_its_own_column():
+    from formbench.evaluation.bench import combine
+
+    def run(version, correct):
+        settings = {"engine": "ollama:m", "scenario": "s", "prompt_version": version}
+        return {"settings": settings, "counts": {"field_correct": correct, "field_cells": 10, "pages": 1}}  # fmt: skip
+
+    combined = combine([run(1, 5), run(2, 9), run(2, 7), run(None, 1)])
+    assert set(combined) == {"ollama:m prompt v1", "ollama:m prompt v2", "ollama:m"}
+    assert combined["ollama:m prompt v2"]["overall_accuracy"] == 0.8
 
 
 class FakeLangfuse:

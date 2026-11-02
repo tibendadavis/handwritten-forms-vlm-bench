@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `formbench bench --folder`: a folder of photos with truth files, or a synthetic scenario (through review and approval), for one or more models; `--rescore` saved runs
 - `formbench compare --folder <name>`: every model that ran on a folder, side by side
 - Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
-- ADRs 0003 to 0007
+- Prompts versioned in Langfuse prompt management: the prompt in code is saved as version 1 (`production`); `--prompt <version|label>` on `bench` and `eval`; every model call linked to its prompt version; runs named, saved and compared per prompt version; weekly runs use the `production` version
+- ADRs 0003 to 0008
 
 ### Fixed
 - A model reply that writes an empty cell as the text "null" or "none" is read as empty, not as an invented value; `--rescore` re-cleans saved readings

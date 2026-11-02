@@ -33,7 +33,8 @@ from formbench.evaluation.scoring import (
 from formbench.evaluation.tracking import evaluations, item_input, score_configs, sync_dataset
 from formbench.evaluation.truth import load_truth, truth_file
 from formbench.files import slugify, stamp, write_json
-from formbench.register.reader import clean_rows
+from formbench.register.prompts import load_prompt
+from formbench.register.reader import clean_rows, prompt_version
 from formbench.register.spec import RegisterSpec, load_spec
 from formbench.weekly.draft import names
 from formbench.weekly.state import page_identity
@@ -79,16 +80,18 @@ def _item(folder: Path, photo: str, kind: str, expected: Any, **metadata: Any) -
 
 
 def read_item(folder: Path, item: dict[str, Any], model: str, *, think: bool = False,
-              max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
-    """Read one photo (a page or the cover): the reading, its validity and the seconds taken."""
+              max_side: int | None = None, prompts: dict[str, Any] | None = None) -> dict[str, Any]:  # fmt: skip
+    """Read one photo (a page or the cover) with its Langfuse prompt (none: the prompt in code):
+    the reading, its validity and the seconds taken."""
     from formbench.register.reader import FULL_MAX_SIDE, read_cover, read_page
 
     start = time.perf_counter()
     photo = folder / item["photo"]
+    prompt = (prompts or {}).get(item["kind"])
     if item["kind"] == "cover":
-        result = read_cover(photo, model, think=think)
+        result = read_cover(photo, model, think=think, prompt=prompt)
     else:
-        result = read_page(photo, model, think=think, max_side=max_side or FULL_MAX_SIDE)
+        result = read_page(photo, model, think=think, max_side=max_side or FULL_MAX_SIDE, prompt=prompt)  # fmt: skip
     return {**result, "latency_s": round(time.perf_counter() - start, 1)}
 
 
@@ -160,14 +163,14 @@ def score_photos(pages_out: list[dict[str, Any]], items: list[dict[str, Any]], d
 
 def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, spec: RegisterSpec, *,
                      think: bool = False, max_side: int | None = None,
-                     configs: dict[str, str] | None = None) -> dict[str, Any]:  # fmt: skip
+                     configs: dict[str, str] | None = None, prompt: Any = None) -> dict[str, Any]:  # fmt: skip
     """Read one page inside its own Langfuse span; with a truth, score it on that span."""
     from langfuse import get_client
 
     langfuse = get_client()
     with langfuse.start_as_current_span(name=f"page {photo.name}") as span:
         item = {"photo": photo.name, "kind": "page"}
-        result = read_item(photo.parent, item, model, think=think, max_side=max_side)
+        result = read_item(photo.parent, item, model, think=think, max_side=max_side, prompts={"page": prompt})  # fmt: skip
         if truth is not None:
             result["scores"] = photo_scores(result, truth, spec)
             for name, value in result["scores"].items():
@@ -177,15 +180,19 @@ def read_scored_page(photo: Path, truth: dict[str, Any] | None, model: str, spec
 
 def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
               configs: dict[str, str] | None, think: bool = False,
-              max_side: int | None = None) -> dict[str, Any]:  # fmt: skip
+              max_side: int | None = None, prompts: dict[str, Any] | None = None) -> dict[str, Any]:  # fmt: skip
     """Benchmark one model on a folder as a Langfuse experiment: one trace per photo, scored
-    against its truth, then the whole-run scores on the dataset run. With configs None
-    (Langfuse not reachable) the same run happens on local items."""
+    against its truth, then the whole-run scores on the dataset run. Every model call is
+    linked to its version of the Langfuse prompt (`prompts` by kind; none: the prompt in code)
+    and the run is named after the page prompt version. With configs None (Langfuse not
+    reachable) the same run happens on local items."""
     items, truth, skipped = load_items(folder)
     if not items:
         raise SystemExit(f"formbench bench: no photo in {folder} has a truth file")
     spec = load_spec(ds)
-    settings = {"folder": folder.name, "model": model, "think": think, "max_side": max_side}
+    version = prompt_version((prompts or {}).get("page"))
+    settings = {"folder": folder.name, "model": model, "think": think, "max_side": max_side,
+                "prompt_version": version}  # fmt: skip
     data = items
     if configs is not None:
         data = sync_dataset(langfuse, folder.name, items, f"Register photos and their truth: {folder}")  # fmt: skip
@@ -193,12 +200,13 @@ def run_bench(folder: Path, model: str, ds: dict[str, Any], *, langfuse: Any,
     def task(*, item: Any, **_: Any) -> dict[str, Any]:
         photo = item_input(item)
         langfuse.update_current_trace(name=f"{model} {photo['photo']}", tags=["formbench"], metadata=settings)  # fmt: skip
-        return read_item(folder, photo, model, think=think, max_side=max_side)
+        return read_item(folder, photo, model, think=think, max_side=max_side, prompts=prompts)
 
     def evaluator(*, output: dict[str, Any], expected_output: Any, **_: Any) -> list[Any]:
         return evaluations(photo_scores(output, expected_output, spec), configs or {})
 
-    run_name = " ".join([model, *(["think"] if think else []), *([f"max-side {max_side}"] if max_side else []), stamp()])  # fmt: skip
+    run_name = " ".join([model, *([f"prompt v{version}"] if version else []), *(["think"] if think else []),
+                         *([f"max-side {max_side}"] if max_side else []), stamp()])  # fmt: skip
     result = langfuse.run_experiment(
         name=folder.name, run_name=run_name, data=data, task=task, evaluators=[evaluator],
         max_concurrency=1, metadata=settings,
@@ -242,7 +250,7 @@ def score_table(title: str, columns: list[tuple[str, dict[str, Any]]]) -> Table:
     table = Table(title=title, caption="↑ higher is better. Meanings: formbench scores")  # fmt: skip
     table.add_column("Score")
     for label, _ in columns:
-        table.add_column(label.split(":", 1)[-1][-28:], justify="right")
+        table.add_column(label.split(":", 1)[-1][-32:], justify="right")
     for group, heading in GROUPS.items():
         scores = [s for s in SCORES if s.group == group and any(s.name in m for _, m in columns)]
         if not scores:
@@ -259,12 +267,19 @@ def page_count(run: dict[str, Any]) -> int:
     return run.get("page_count") or sum(len(w["pages"]) for w in run["weeks"])
 
 
+def run_label(settings: dict[str, Any]) -> str:
+    """The engine and, when the run used a Langfuse prompt, its version: each prompt version
+    of a model gets its own column."""
+    version = settings.get("prompt_version")
+    return f"{settings['engine']} prompt v{version}" if version else settings["engine"]
+
+
 def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Per engine: counts summed over scenarios, then rates taken once (not an average of
-    averages)."""
+    """Per engine and prompt version: counts summed over scenarios, then rates taken once (not
+    an average of averages)."""
     groups: dict[str, list[dict[str, Any]]] = {}
     for run in runs:
-        groups.setdefault(run["settings"]["engine"], []).append(run)
+        groups.setdefault(run_label(run["settings"]), []).append(run)
     return {
         engine: metrics(
             sum_counts([r["counts"] for r in group]),
@@ -337,7 +352,7 @@ def command(args: argparse.Namespace) -> None:
     if args.rescore:
         for path in args.rescore:
             run = _rescore(path, folder, ds)
-            rows.append((run["settings"]["engine"], run["metrics"]))
+            rows.append((run_label(run["settings"]), run["metrics"]))
         console.print(score_table(f"Re-scored: {folder.name}", rows))
         return
     if not args.engine:
@@ -349,12 +364,18 @@ def command(args: argparse.Namespace) -> None:
     except Exception as error:  # no keys, or the server is down: still run, save locally
         console.print(f"[yellow]Langfuse not reachable ({error}); results are saved locally only.[/yellow]")  # fmt: skip
         configs = None
+    prompts = {"page": load_prompt(langfuse, "page", args.prompt)}
+    if (folder / "truth.json").exists():  # a scenario also reads its cover
+        prompts["cover"] = load_prompt(langfuse, "cover")
+    version = prompt_version(prompts["page"])
+    console.print(f"Prompt: {'register-page v' + str(version) if version else 'the prompt in code (Langfuse not reachable)'}")  # fmt: skip
     for engine in args.engine:
         model = model_tag(engine)
         console.print(f"Running {engine} on {folder.name}...")
         result = run_bench(folder, model, ds, langfuse=langfuse, configs=configs,
-                           think=args.think, max_side=args.max_side)  # fmt: skip
-        settings = {"scenario": folder.name, "engine": engine, "think": args.think, "max_side": args.max_side}  # fmt: skip
+                           think=args.think, max_side=args.max_side, prompts=prompts)  # fmt: skip
+        settings = {"scenario": folder.name, "engine": engine, "think": args.think,
+                    "max_side": args.max_side, "prompt_version": version}  # fmt: skip
         path = write_json(args.out / f"{stamp()}_{folder.name}_{slugify(engine)}.json", {"settings": settings, **result})  # fmt: skip
         for note, photos in (("not read (failed)", result["failed"]), ("skipped (no truth file)", result["skipped"])):  # fmt: skip
             if photos:
@@ -364,6 +385,6 @@ def command(args: argparse.Namespace) -> None:
         if result["dataset_run_url"]:
             console.print(f"Langfuse: {result['dataset_run_url']}")
         console.print(f"Saved to {path}")
-        rows.append((engine, result["metrics"]))
+        rows.append((run_label(settings), result["metrics"]))
     console.print(score_table(f"{folder.name}: this run", rows))
     console.print(f"All runs on this folder side by side: formbench compare --folder {folder.name}")

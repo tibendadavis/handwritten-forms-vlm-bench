@@ -173,22 +173,26 @@ def command(args: argparse.Namespace) -> None:
 
     from langfuse import get_client
 
-    from formbench.register.reader import read_cover, read_page
+    from formbench.register.prompts import load_prompt
+    from formbench.register.reader import prompt_version, read_cover, read_page
     from formbench.weekly.review import write_review
 
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = args.out / f"{args.week}_{stamp}"
     run_dir.mkdir(parents=True, exist_ok=True)
     langfuse = get_client()
-    settings = {"week": args.week, "engine": args.engine, "think": args.think}
+    # The versions labelled production in Langfuse: promoting a better prompt changes this.
+    prompts = {kind: load_prompt(langfuse, kind) for kind in ("page", "cover")}
+    settings = {"week": args.week, "engine": args.engine, "think": args.think,
+                "prompt_versions": {k: prompt_version(p) for k, p in prompts.items()}}  # fmt: skip
     try:
         with langfuse.start_as_current_span(name="register-run", metadata=settings):
             langfuse.update_current_trace(name=f"register {args.week}", metadata=settings, tags=["register"])  # fmt: skip
             start = time.perf_counter()
-            cover = read_cover(args.cover, model, think=args.think)
+            cover = read_cover(args.cover, model, think=args.think, prompt=prompts["cover"])
             pages, page_info = [], []
             for photo in args.pages:
-                result = read_page(photo, model, think=args.think)
+                result = read_page(photo, model, think=args.think, prompt=prompts["page"])
                 pid = page_identity(result["reading"], photo.stem)
                 pages.append({"page_id": pid, **result["reading"]})
                 page_info.append({"page_id": pid, "photo": str(photo), "json_valid": result["json_valid"],

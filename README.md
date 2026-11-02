@@ -10,7 +10,7 @@ A benchmark for reading photos of handwritten forms with local vision-language m
 
 ```mermaid
 flowchart LR
-    A[Page photo] --> B[VLM + JSON schema<br/>+ fixed prompt]
+    A[Page photo] --> B[VLM + JSON schema<br/>+ versioned prompt]
     B --> C[Reading:<br/>rows and dates]
     C --> D[Code counts doses<br/>into daily DHIS2 values]
     D --> E[Flags for anything<br/>doubtful]
@@ -20,7 +20,7 @@ flowchart LR
     D -.-> S
 ```
 
-- **The model only reads.** One call per page photo, the same prompt and JSON schema every time (`register/prompts.py`), temperature 0 and a fixed seed. The schema has no fields for names, phones or villages, so they cannot come back.
+- **The model only reads.** One call per page photo with a fixed JSON schema (`register/prompts.py`) and a prompt versioned in Langfuse, temperature 0 and a fixed seed. The schema has no fields for names, phones or villages, so they cannot come back.
 - **Code does the counting.** Dates are parsed, ages computed from the birth date, and values mapped to DHIS2 data elements and category option combos from the data set metadata (`register/spec.py`, `register/aggregate.py`).
 - **Anything doubtful is flagged and not counted** until a person resolves it.
 
@@ -139,6 +139,34 @@ workload (see below). `uv run formbench scores` prints all of them.
 In Langfuse, every folder is a dataset and every run one of its runs: open **Datasets →
 \<folder\> → Runs** to compare models, with every photo's trace and scores.
 
+## Improve the prompt
+
+The page prompt is versioned in Langfuse under **Prompts → register-page**. The first run saves
+the prompt in code (`register/prompts.py`) there as version 1, labelled `production`.
+
+1. **Write a new version** in Langfuse: open the prompt, create a new version, edit the text
+   and say what you changed in the commit message.
+2. **Run it** on the same folder and models as before:
+
+   ```bash
+   uv run formbench bench --folder data/private/photos/my-pages --engine ollama:qwen3.5:4b --prompt 2
+   ```
+
+   `--prompt` takes a version number or a label you gave a version (`--prompt candidate`).
+   Without it, a run uses the `production` version. `eval` takes `--prompt` too.
+3. **Compare.** `formbench compare --folder my-pages` shows one column per model and prompt
+   version (`qwen3.5:4b prompt v2`). In Langfuse, each run is named after its prompt version,
+   every model call is linked to the version it used, and **Datasets → my-pages → Runs** puts
+   runs side by side, photo by photo.
+4. **Promote the winner.** Move the `production` label to a version that is better on every
+   model you care about. Weekly runs (`formbench run`) use the `production` version.
+
+The prompt changes what the model is told, not what it must return: the keys and their
+descriptions come from the schema in code. A version or label that does not exist stops the
+run, so a run is never labelled with a prompt it did not use. Without Langfuse, the prompt in
+code is used and the run has no prompt version. Runs saved before prompts were versioned show
+the model name only.
+
 ## Synthetic test data
 
 Synthetic registers are drawn on the real blank page, with known answers. Writers range from
@@ -209,7 +237,7 @@ Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md) and [ADR 000
 - **Private data stays local.** Photos, the blank register, the metadata snapshot, synthetic data and results are never committed.
 - **Tests need nothing running.** No Ollama, Langfuse or network: `uv run pytest -q`.
 
-Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files.
+Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files, [0008](docs/adr/0008-prompts-versioned-in-langfuse.md) prompt versions.
 
 ## License
 
