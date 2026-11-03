@@ -99,31 +99,8 @@ def default_prompt(kind: str) -> str:
 
 
 def load_prompt(langfuse: Any, kind: str, choice: str | None = None) -> Any:
-    """The page or cover prompt from Langfuse: `choice` is a version number or a label
-    (default: the version labelled production). The first time, the prompt in code is saved
-    as version 1 with the production label. Returns None when Langfuse is not reachable and
-    no version was asked for: the prompt in code is used, linked to no version."""
-    from langfuse.api import NotFoundError
+    """The page or cover prompt from Langfuse (prompt_store.fetch_prompt): `choice` is a
+    version number or a label, default production; None when Langfuse is not reachable."""
+    from formbench.prompt_store import fetch_prompt
 
-    name = PROMPT_NAMES[kind]
-    version = int(choice) if choice and choice.isdigit() else None
-    label = None if version else choice or "production"
-    try:
-        return langfuse.get_prompt(name, version=version, label=label, cache_ttl_seconds=0, max_retries=0)  # fmt: skip
-    except NotFoundError:
-        pass
-    except Exception as error:  # no keys, or the server is down
-        if choice:
-            raise SystemExit(f"Langfuse not reachable for prompt {name} {choice} ({error})") from None  # fmt: skip
-        return None
-    try:
-        langfuse.get_prompt(name, label="latest", cache_ttl_seconds=0, max_retries=0)
-    except NotFoundError:
-        if not choice:  # never saved: the prompt in code becomes version 1
-            return langfuse.create_prompt(
-                name=name, prompt=default_prompt(kind), labels=["production"], tags=["formbench"],
-                commit_message="The prompt in code (formbench), first version",
-            )  # fmt: skip
-    # What was asked for does not exist: never run another version instead.
-    raise SystemExit(f"Langfuse has no {name} prompt {label or version!r}. Prompts > {name} in "
-                     "Langfuse lists its versions and labels.")  # fmt: skip
+    return fetch_prompt(langfuse, PROMPT_NAMES[kind], default_prompt(kind), choice)

@@ -305,7 +305,9 @@ def combine(runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
 def compare(args: argparse.Namespace) -> None:
     """One table per folder with every model that ran on it; repeated runs of a model on the
     same folder are pooled. With several folders, a last table pools them all per model."""
-    paths = args.runs or sorted(RESULTS.glob("*.json"))
+    from formbench.tally.bench import RESULTS as TALLY_RESULTS
+
+    paths = args.runs or sorted([*RESULTS.glob("*.json"), *TALLY_RESULTS.glob("*.json")])
     runs = [json.loads(p.read_text()) for p in paths]
     if args.folder:
         runs = [r for r in runs if r["settings"]["scenario"] == args.folder]

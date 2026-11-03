@@ -2,6 +2,7 @@
 
 formbench eval      one photo, one model: reading, wrong cells, scores
 formbench bench     a folder of photos with their truth, one or more models
+formbench tally     a folder of tally sheet section photos with their truth, one or more models
 formbench compare   every model that ran on a folder, side by side
 formbench synth     make a synthetic handwritten scenario with known answers
 formbench template  build the blank-page template the synthetic pages are drawn on
@@ -27,6 +28,8 @@ MAX_SIDE_HELP = (
 )
 PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
                "(default: production)")  # fmt: skip
+TALLY_PROMPT_HELP = ("version of the form's tally prompt in Langfuse: a number (3) or a label "
+                     "(default: production)")  # fmt: skip
 
 
 def model_tag(engine: str) -> str:
@@ -65,8 +68,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--metadata", type=Path, default=METADATA)
     p.add_argument("--out", type=Path, default=Path("results/register/bench"))
 
+    p = sub.add_parser(
+        "tally", help="score models on photos of tally sheet sections with their truth"
+    )
+    p.add_argument("--folder", type=Path, required=True,
+                   help="one photo per section, <sheet>_<section>.jpg, and a <sheet>.json truth per sheet")  # fmt: skip
+    p.add_argument("--form", type=Path, help="the form description (default: form.json in the folder or above)")  # fmt: skip
+    p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
+    p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
+    p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
+    p.add_argument("--prompt", help=TALLY_PROMPT_HELP)
+    p.add_argument("--think", action="store_true", help="let thinking models think")
+    p.add_argument("--out", type=Path, default=Path("results/tally/bench"))
+
     p = sub.add_parser("compare", help="every model that ran on a folder, side by side")
-    p.add_argument("runs", type=Path, nargs="*", help="saved runs (default: all in results/register/bench)")  # fmt: skip
+    p.add_argument("runs", type=Path, nargs="*", help="saved runs (default: all in results/register/bench and results/tally/bench)")  # fmt: skip
     p.add_argument("--folder", help="only runs on this folder (its name, e.g. my-photos)")
 
     sub.add_parser("scores", help="what every score means")
@@ -117,6 +133,8 @@ def main(argv: list[str] | None = None) -> None:
         from formbench.evaluation.photo import command
     elif args.command == "bench":
         from formbench.evaluation.bench import command
+    elif args.command == "tally":
+        from formbench.tally.bench import command
     elif args.command == "compare":
         from formbench.evaluation.bench import compare as command
     elif args.command == "scores":
