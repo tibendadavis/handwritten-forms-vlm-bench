@@ -134,3 +134,17 @@ def complete_json(
         **options,
     )
     return response.choices[0].message.content
+
+
+def read_json(image: Path | Image.Image, schema: dict[str, Any], prompt: str, model: str, **options: Any) -> dict[str, Any]:  # fmt: skip
+    """complete_json, then interpret. A timeout is recorded as an invalid reply (nothing read),
+    not a crash, so one stuck photo cannot stop a whole benchmark; other errors (e.g. Ollama
+    down) raise. `options` are complete_json's keyword arguments."""
+    import openai
+
+    try:
+        raw = complete_json(image, schema, prompt, model, **options)
+    except openai.APITimeoutError:
+        return {"raw": None, "values": dict.fromkeys(schema["properties"]), "json_valid": False,
+                "errors": ["model call timed out (no reply)"]}  # fmt: skip
+    return interpret(raw, schema)

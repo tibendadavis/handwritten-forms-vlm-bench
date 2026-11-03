@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from formbench.prompt_store import prompt_version
 from formbench.register.prompts import (
     PROMPT_NAMES,
     ROW_FIELDS,
@@ -37,29 +38,16 @@ def clean_rows(rows: Any) -> list[dict[str, Any]]:
     return out
 
 
-def prompt_version(prompt: Any) -> int | None:
-    """The Langfuse version of a prompt; None for the prompt in code."""
-    return None if prompt is None else prompt.version
-
-
 def _call(image, schema, kind, prompt, model, think, max_side):
-    """One model call with the Langfuse `prompt` (None: the prompt in code). A timeout is
-    recorded as an invalid reply (nothing read), not a crash, so one stuck page cannot stop a
-    whole benchmark; other errors (e.g. Ollama down) raise."""
-    import openai
-
-    from formbench.vlm import complete_json, interpret
+    """One model call with the Langfuse `prompt` (None: the prompt in code); a timeout is an
+    invalid reply, not a crash (vlm.read_json)."""
+    from formbench.vlm import read_json
 
     text = default_prompt(kind) if prompt is None else prompt.compile()
-    try:
-        raw = complete_json(
-            image, schema, text, model, think=think, max_side=max_side, name=PROMPT_NAMES[kind],
-            metadata={"prompt_version": prompt_version(prompt)}, langfuse_prompt=prompt,
-        )  # fmt: skip
-    except openai.APITimeoutError:
-        return {"raw": None, "values": dict.fromkeys(schema["properties"]), "json_valid": False,
-                "errors": ["model call timed out (no reply)"]}  # fmt: skip
-    return interpret(raw, schema)
+    return read_json(
+        image, schema, text, model, think=think, max_side=max_side, name=PROMPT_NAMES[kind],
+        metadata={"prompt_version": prompt_version(prompt)}, langfuse_prompt=prompt,
+    )  # fmt: skip
 
 
 def read_page(photo: Path, model: str, *, think: bool = False, max_side: int = FULL_MAX_SIDE,

@@ -168,6 +168,50 @@ run, so a run is never labelled with a prompt it did not use. Without Langfuse, 
 code is used and the run has no prompt version. Runs saved before prompts were versioned show
 the model name only.
 
+## Tally sheets
+
+A **tally sheet** holds totals, one digit per box, in sections framed by black squares at
+their corners. It is photographed one section at a time. (A register, above, is a list: one
+row per person.) Tally sheets are scored with the same reading scores; there is no DHIS2 step.
+
+**1. Describe the form once** in `form.json` (kept out of git with the photos): its sections
+and their fields. Each field is a `count`, `digits` (a code), `text`, `date`, `choice` (the
+filled circle, with its `options`) or `mark` (signed or not):
+
+```json
+{"id": "weekly-tally", "name": "Weekly tally sheet",
+ "sections": {"A": {"title": "Session details", "fields": [
+                {"key": "Week starting", "type": "date"},
+                {"key": "Region", "type": "choice", "options": ["North", "South"]}]},
+              "B": {"title": "Screening", "fields": [
+                {"key": "Screened_6-11 m_Male", "type": "count"}]}}}
+```
+
+**2. Put one photo per section and one truth file per filled sheet** in a folder, with
+`form.json` in the folder or the one above it:
+
+```text
+data/private/tally/
+  form.json
+  my-sheets/
+    sheet-01.json                      every field of the sheet: {"Week starting": "19/10/2026", ...}
+    sheet-01_A.jpg  sheet-01_B.jpg ...  one photo per section, named <sheet>_<section>
+```
+
+Each photo is scored on its own section's fields. Counts compare as numbers (`007` = 7, and an
+empty box = 0), dates as dates, text ignoring case and spacing.
+
+**3. Run and compare:**
+
+```bash
+uv run formbench tally --folder data/private/tally/my-sheets --engine ollama:qwen3.5:9b
+uv run formbench compare --folder my-sheets
+```
+
+One prompt per form, versioned in Langfuse as `tally-<form id>`, serves every section:
+`{{section}}`, `{{title}}` and `{{fields}}` are filled in for the photo. Keep them when editing
+it. `--prompt`, `--max-side`, `--think` and `--rescore` work as for `bench`.
+
 ## Synthetic test data
 
 Synthetic registers are drawn on the real blank page, with known answers. Writers range from
@@ -238,7 +282,7 @@ Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md) and [ADR 000
 - **Private data stays local.** Photos, the blank register, the metadata snapshot, synthetic data and results are never committed.
 - **Tests need nothing running.** No Ollama, Langfuse or network: `uv run pytest -q`.
 
-Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files, [0008](docs/adr/0008-prompts-versioned-in-langfuse.md) prompt versions.
+Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files, [0008](docs/adr/0008-prompts-versioned-in-langfuse.md) prompt versions, [0009](docs/adr/0009-tally-sheets-by-section.md) tally sheets.
 
 ## License
 
