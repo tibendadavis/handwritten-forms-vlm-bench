@@ -22,14 +22,19 @@ MAX_TOKENS = 8192
 REQUEST_TIMEOUT = 600.0
 
 
-def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE) -> str:
-    """The photo as a JPEG data URL, upright and at most max_side pixels on its long side."""
+def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE, min_side: int = 0) -> str:
+    """The photo as a JPEG data URL, upright and at most max_side pixels on its long side. A
+    photo smaller than min_side is enlarged to it: a small page photo gives the model too few
+    pixels per handwritten digit."""
     if isinstance(source, Image.Image):
         img = source.convert("RGB")
     else:
         with Image.open(source) as opened:
             img = ImageOps.exif_transpose(opened).convert("RGB")
     img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+    if max(img.size) < min_side:
+        scale = min_side / max(img.size)
+        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.Resampling.LANCZOS)  # fmt: skip
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=90)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
@@ -83,6 +88,7 @@ def complete_json(
     *,
     think: bool = False,
     max_side: int = MAX_SIDE,
+    min_side: int = 0,
     name: str = "vlm-extract",
     metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
@@ -116,7 +122,10 @@ def complete_json(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": encode_image(image, max_side)}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": encode_image(image, max_side, min_side)},
+                    },
                 ],
             }
         ],

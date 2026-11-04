@@ -73,6 +73,14 @@ def test_photo_is_downscaled(tmp_path):
     assert max(decoded.size) == MAX_SIDE
 
 
+def test_small_photo_is_enlarged_to_min_side():
+    url = encode_image(Image.new("RGB", (900, 1200), "white"), min_side=2400)
+    decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
+    assert decoded.size == (1800, 2400)
+    url = encode_image(Image.new("RGB", (3000, 2000), "white"), max_side=2000, min_side=1000)
+    assert Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))).size == (2000, 1333)
+
+
 def test_in_memory_image_is_encoded_with_custom_size():
     url = encode_image(Image.new("RGB", (5000, 1000), "white"), max_side=3000)
     decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))

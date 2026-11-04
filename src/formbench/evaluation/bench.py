@@ -278,11 +278,12 @@ def page_count(run: dict[str, Any]) -> int:
 
 
 def run_label(settings: dict[str, Any]) -> str:
-    """The engine, its Langfuse prompt version and, when not the default, the image size: each
-    prompt version and image size of a model gets its own column."""
+    """The engine, whole-page photos if so, its Langfuse prompt version and, when not the default,
+    the image size: each prompt version and image size of a model gets its own column."""
     version = settings.get("prompt_version")
     side = settings.get("max_side") or OLD_DEFAULT_MAX_SIDE
-    return " ".join([settings["engine"], *([f"prompt v{version}"] if version else []),
+    return " ".join([settings["engine"], *(["full pages"] if settings.get("photos") == "pages" else []),
+                     *([f"prompt v{version}"] if version else []),
                      *([f"{side}px"] if side != FULL_MAX_SIDE else [])])  # fmt: skip
 
 

@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Langfuse experiments: each folder is a dataset, each benchmark run a dataset run, page scores on every photo's trace, whole-run scores on the run, score definitions registered as score configs; runs locally when Langfuse is not reachable
 - Prompts versioned in Langfuse prompt management: the prompt in code is saved as version 1 (`production`); `--prompt <version|label>` on `bench` and `eval`; every model call linked to its prompt version; runs named, saved and compared per prompt version; weekly runs use the `production` version
 - `formbench tally`: tally sheets (totals in digit boxes, photographed one section at a time) described in a private `form.json`; one photo per section scored against its section of a whole-sheet truth file, with the same reading scores, Langfuse datasets, one versioned prompt per form and `compare`
-- ADRs 0003 to 0009
+- `formbench tally --pages`: whole-page photos of the same sheets (`<sheet>.jpg`, `<sheet>_p2.jpg`), each read in one call with its own versioned prompt (`tally-<form id>-page`) and scored on the sections printed on it (`pages` in `form.json`); small page photos are enlarged to 2560 px first; `compare` shows them as "full pages"
+- ADRs 0003 to 0010
 
 ### Changed
 - Photos are sent at up to 4032 px on the long side (was 3072), a 12 MP phone photo as taken; each run records the size it used and `compare` shows runs at another size in their own column

@@ -28,8 +28,8 @@ MAX_SIDE_HELP = (
 )
 PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
                "(default: production)")  # fmt: skip
-TALLY_PROMPT_HELP = ("version of the form's tally prompt in Langfuse: a number (3) or a label "
-                     "(default: production)")  # fmt: skip
+TALLY_PROMPT_HELP = ("version of the form's tally prompt in Langfuse (with --pages, its page prompt): "
+                     "a number (3) or a label (default: production)")  # fmt: skip
 
 
 def model_tag(engine: str) -> str:
@@ -73,6 +73,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--folder", type=Path, required=True,
                    help="one photo per section, <sheet>_<section>.jpg, and a <sheet>.json truth per sheet")  # fmt: skip
+    p.add_argument("--pages", action="store_true",
+                   help="benchmark the whole-page photos instead, <sheet>.jpg (page 1) and <sheet>_p2.jpg, with the page prompt")  # fmt: skip
     p.add_argument("--form", type=Path, help="the form description (default: form.json in the folder or above)")  # fmt: skip
     p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
     p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
