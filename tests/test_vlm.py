@@ -73,12 +73,16 @@ def test_photo_is_downscaled(tmp_path):
     assert max(decoded.size) == MAX_SIDE
 
 
-def test_small_photo_is_enlarged_to_min_side():
-    url = encode_image(Image.new("RGB", (900, 1200), "white"), min_side=2400)
-    decoded = Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1])))
-    assert decoded.size == (1800, 2400)
-    url = encode_image(Image.new("RGB", (3000, 2000), "white"), max_side=2000, min_side=1000)
-    assert Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))).size == (2000, 1333)
+def test_photo_within_max_side_is_sent_byte_for_byte(tmp_path):
+    path = tmp_path / "photo.jpg"  # a PNG named .jpg is sent as the PNG it is
+    Image.new("RGB", (900, 1200), "white").save(path, "PNG")
+    assert encode_image(path) == f"data:image/png;base64,{base64.b64encode(path.read_bytes()).decode()}"  # fmt: skip
+    sideways = tmp_path / "sideways.jpg"
+    exif = Image.Exif()
+    exif[0x0112] = 6  # held sideways: turned upright, so not as taken
+    Image.new("RGB", (1200, 900), "white").save(sideways, "JPEG", exif=exif)
+    decoded = Image.open(io.BytesIO(base64.b64decode(encode_image(sideways).split(",", 1)[1])))
+    assert decoded.size == (900, 1200)
 
 
 def test_in_memory_image_is_encoded_with_custom_size():

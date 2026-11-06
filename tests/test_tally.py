@@ -193,7 +193,7 @@ def test_page_photos_are_scored_on_every_section_printed_on_them(tmp_path, monke
 
 def test_a_whole_page_is_one_call_split_into_its_sections(form, monkeypatch):
     import formbench.vlm as vlm
-    from formbench.tally.form import DEFAULT_PAGE_PROMPT, PAGE_MIN_SIDE, read_page
+    from formbench.tally.form import DEFAULT_PAGE_PROMPT, read_page
 
     calls = []
     reply = '{"site_name": "CENTRAL", "area": "null", "screened_6_m_male": "7"}'
@@ -203,6 +203,6 @@ def test_a_whole_page_is_one_call_split_into_its_sections(form, monkeypatch):
     assert set(args[1]["properties"]) == {f.id for s in form.sections.values() for f in s.fields}
     assert 'Section A, "Session":\n- week_starting' in args[2] and 'Section B, "Screening":' in args[2]  # fmt: skip
     assert "{{" not in args[2] and "{{fields}}" in DEFAULT_PAGE_PROMPT
-    assert kwargs["name"] == "tally-test-tally-page" and kwargs["min_side"] == PAGE_MIN_SIDE
+    assert kwargs["name"] == "tally-test-tally-page" and "min_side" not in kwargs
     assert result["readings"]["A"]["site_name"] == "CENTRAL" and result["readings"]["A"]["area"] is None  # fmt: skip
     assert result["readings"]["B"] == {"screened_6_m_male": "7", "screened_6_m_female": None, "officer_signature": None}  # fmt: skip

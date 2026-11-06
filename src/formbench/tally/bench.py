@@ -32,7 +32,6 @@ from formbench.register.reader import FULL_MAX_SIDE
 from formbench.tally.form import (
     DEFAULT_PAGE_PROMPT,
     DEFAULT_PROMPT,
-    PAGE_MIN_SIDE,
     Form,
     find_form,
     load_form,
@@ -114,7 +113,7 @@ def run_tally(folder: Path, form: Form, model: str, *, langfuse: Any, configs: d
     side, version = max_side or FULL_MAX_SIDE, prompt_version(prompt)
     settings = {"folder": folder.name, "form": form.id, "model": model, "think": think,
                 "max_side": side, "prompt_version": version,
-                **({"photos": "pages", "min_side": PAGE_MIN_SIDE} if pages else {})}  # fmt: skip
+                **({"photos": "pages"} if pages else {})}  # fmt: skip
     data = items
     if configs is not None:
         data = sync_dataset(langfuse, folder.name, items, f"{form.name}: section photos and their truth")  # fmt: skip
@@ -210,7 +209,7 @@ def command(args: argparse.Namespace) -> None:
                            max_side=args.max_side, prompt=prompt, pages=args.pages)  # fmt: skip
         settings = {"scenario": folder.name, "form": form.id, "engine": engine, "think": args.think,
                     "max_side": args.max_side or FULL_MAX_SIDE, "prompt_version": version,
-                    **({"photos": "pages", "min_side": PAGE_MIN_SIDE} if args.pages else {})}  # fmt: skip
+                    **({"photos": "pages"} if args.pages else {})}  # fmt: skip
         path = write_json(args.out / f"{stamp()}_{folder.name}_{slugify(engine)}.json", {"settings": settings, **result})  # fmt: skip
         for note, photos in (
             ("not read (failed)", result["failed"]),

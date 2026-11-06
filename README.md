@@ -227,7 +227,11 @@ uv run formbench tally --folder data/private/tally/my-sheets --pages --engine ol
 
 Each page is read in one call with its own prompt, `tally-<form id>-page` in Langfuse, where
 `{{fields}}` lists the fields of every section on the page; it is scored on those sections.
-Small page photos are enlarged to 2560 px on the long side first.
+
+Photos are sent exactly as they are in the folder, section and page photos alike: never
+enlarged or re-compressed (only a photo over `--max-side`, or one stored sideways, is
+converted). To try an enlarged or cropped photo, make it yourself and put it in its own
+folder with a copy of the truth file.
 
 ## Synthetic test data
 

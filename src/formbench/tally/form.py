@@ -83,9 +83,6 @@ Rules:
 - If a character is hard to read, give your best reading. Use null only when all the boxes of a field are empty.
 - A signature or stamp in the signature box means "signed".
 - Output only the JSON object."""
-# A page photo is enlarged to this long side: at phone-chat size (about 1200 px) a digit box is
-# about 20 px, too few for the model to tell neighbouring boxes and rows apart.
-PAGE_MIN_SIDE = 2560
 
 
 def slug(key: str) -> str:
@@ -298,7 +295,7 @@ def read_section(photo: Path, form: Form, letter: str, model: str, *, think: boo
 
 
 def read_page(photo: Path, form: Form, page: int, model: str, *, think: bool = False,
-              max_side: int, min_side: int = PAGE_MIN_SIDE, prompt: Any = None) -> dict[str, Any]:  # fmt: skip
+              max_side: int, prompt: Any = None) -> dict[str, Any]:  # fmt: skip
     """Read every section of a whole-page photo in one call with the page prompt (None: the
     prompt in code); the reading is split per section, as if each had its own photo."""
     from formbench.prompt_store import prompt_version
@@ -311,8 +308,7 @@ def read_page(photo: Path, form: Form, page: int, model: str, *, think: bool = F
     )  # fmt: skip
     result = read_json(
         photo, page_schema(sections), text, model, think=think, max_side=max_side,
-        min_side=min_side, name=form.page_prompt_name,
-        metadata={"prompt_version": prompt_version(prompt), "page": page}, langfuse_prompt=prompt,
+        name=form.page_prompt_name, metadata={"prompt_version": prompt_version(prompt), "page": page}, langfuse_prompt=prompt,
     )  # fmt: skip
     values = clean(result["values"])
     readings = {s.letter: {f.id: values.get(f.id) for f in s.fields} for s in sections}

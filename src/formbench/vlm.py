@@ -20,21 +20,24 @@ MAX_TOKENS = 8192
 # One call may take minutes on a laptop; past this it has failed. No silent retries: a retry
 # repeats the same deterministic call and only multiplies the wait.
 REQUEST_TIMEOUT = 600.0
+# Files the model gets byte for byte, by what is inside them (a .jpg may hold a PNG).
+AS_TAKEN = {"JPEG": "image/jpeg", "PNG": "image/png"}
+ORIENTATION = 0x0112  # EXIF tag: how the camera was held
 
 
-def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE, min_side: int = 0) -> str:
-    """The photo as a JPEG data URL, upright and at most max_side pixels on its long side. A
-    photo smaller than min_side is enlarged to it: a small page photo gives the model too few
-    pixels per handwritten digit."""
+def encode_image(source: Path | Image.Image, max_side: int = MAX_SIDE) -> str:
+    """The photo as a data URL. A JPEG or PNG file that is upright and at most max_side pixels
+    on its long side is sent byte for byte, as taken: never enlarged, never re-compressed.
+    Otherwise it is turned upright, shrunk to max_side and sent as JPEG."""
     if isinstance(source, Image.Image):
         img = source.convert("RGB")
     else:
         with Image.open(source) as opened:
+            kind = AS_TAKEN.get(opened.format or "")
+            if kind and opened.getexif().get(ORIENTATION, 1) == 1 and max(opened.size) <= max_side:
+                return f"data:{kind};base64,{base64.b64encode(Path(source).read_bytes()).decode()}"
             img = ImageOps.exif_transpose(opened).convert("RGB")
     img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
-    if max(img.size) < min_side:
-        scale = min_side / max(img.size)
-        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.Resampling.LANCZOS)  # fmt: skip
     buf = io.BytesIO()
     img.save(buf, "JPEG", quality=90)
     return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
@@ -88,7 +91,6 @@ def complete_json(
     *,
     think: bool = False,
     max_side: int = MAX_SIDE,
-    min_side: int = 0,
     name: str = "vlm-extract",
     metadata: dict[str, Any] | None = None,
     base_url: str | None = None,
@@ -122,10 +124,7 @@ def complete_json(
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": encode_image(image, max_side, min_side)},
-                    },
+                    {"type": "image_url", "image_url": {"url": encode_image(image, max_side)}},
                 ],
             }
         ],
