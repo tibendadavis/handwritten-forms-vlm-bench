@@ -171,8 +171,8 @@ the model name only.
 ## Tally sheets
 
 A **tally sheet** holds totals, one digit per box, in sections framed by black squares at
-their corners. It is photographed one section at a time. (A register, above, is a list: one
-row per person.) Tally sheets are scored with the same reading scores; there is no DHIS2 step.
+their corners. It is photographed one section at a time, or one whole page at a time. (A
+register, above, is a list: one row per person.) Tally sheets are scored with the same reading scores; there is no DHIS2 step.
 
 **1. Describe the form once** in `form.json` (kept out of git with the photos): its sections
 and their fields. Each field is a `count`, `digits` (a code), `text`, `date`, `choice` (the
@@ -184,8 +184,12 @@ filled circle, with its `options`) or `mark` (signed or not):
                 {"key": "Week starting", "type": "date"},
                 {"key": "Region", "type": "choice", "options": ["North", "South"]}]},
               "B": {"title": "Screening", "fields": [
-                {"key": "Screened_6-11 m_Male", "type": "count"}]}}}
+                {"key": "Screened_6-11 m_Male", "type": "count"}]}},
+ "pages": ["A", "B"]}
 ```
+
+`pages` lists the sections printed on each page, page 1 first (without it, one page holds every
+section). It is only needed for whole-page photos.
 
 **2. Put one photo per section and one truth file per filled sheet** in a folder, with
 `form.json` in the folder or the one above it:
@@ -196,6 +200,7 @@ data/private/tally/
   my-sheets/
     sheet-01.json                      every field of the sheet: {"Week starting": "19/10/2026", ...}
     sheet-01_A.jpg  sheet-01_B.jpg ...  one photo per section, named <sheet>_<section>
+    sheet-01.jpg  sheet-01_p2.jpg      whole pages, if you also want to try those (optional)
 ```
 
 Each photo is scored on its own section's fields. Counts compare as numbers (`007` = 7, and an
@@ -211,6 +216,22 @@ uv run formbench compare --folder my-sheets
 One prompt per form, versioned in Langfuse as `tally-<form id>`, serves every section:
 `{{section}}`, `{{title}}` and `{{fields}}` are filled in for the photo. Keep them when editing
 it. `--prompt`, `--max-side`, `--think` and `--rescore` work as for `bench`.
+
+**Whole pages instead of sections.** `--pages` benchmarks the whole-page photos of the same
+sheets (`<sheet>.jpg` is page 1, `<sheet>_p2.jpg` page 2) against the same truth files, so
+`compare` shows both ways of taking photos side by side ("full pages" in the column name):
+
+```bash
+uv run formbench tally --folder data/private/tally/my-sheets --pages --engine ollama:qwen3.5:9b
+```
+
+Each page is read in one call with its own prompt, `tally-<form id>-page` in Langfuse, where
+`{{fields}}` lists the fields of every section on the page; it is scored on those sections.
+
+Photos are sent exactly as they are in the folder, section and page photos alike: never
+enlarged or re-compressed (only a photo over `--max-side`, or one stored sideways, is
+converted). To try an enlarged or cropped photo, make it yourself and put it in its own
+folder with a copy of the truth file.
 
 ## Synthetic test data
 
@@ -282,7 +303,7 @@ Details in [ADR 0005](docs/adr/0005-register-evaluation-metrics.md) and [ADR 000
 - **Private data stays local.** Photos, the blank register, the metadata snapshot, synthetic data and results are never committed.
 - **Tests need nothing running.** No Ollama, Langfuse or network: `uv run pytest -q`.
 
-Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files, [0008](docs/adr/0008-prompts-versioned-in-langfuse.md) prompt versions, [0009](docs/adr/0009-tally-sheets-by-section.md) tally sheets.
+Design decisions: [ADR 0003](docs/adr/0003-vlm-structured-output-and-thinking.md) structured output, [0004](docs/adr/0004-register-to-daily-aggregates.md) register to daily values, [0005](docs/adr/0005-register-evaluation-metrics.md) scores, [0006](docs/adr/0006-benchmark-runs-as-langfuse-experiments.md) Langfuse experiments, [0007](docs/adr/0007-fewer-plainly-named-scores.md) the scores and truth files, [0008](docs/adr/0008-prompts-versioned-in-langfuse.md) prompt versions, [0009](docs/adr/0009-tally-sheets-by-section.md) tally sheets, [0010](docs/adr/0010-tally-whole-page-photos.md) whole-page photos.
 
 ## License
 

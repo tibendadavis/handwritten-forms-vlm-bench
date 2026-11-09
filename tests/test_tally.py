@@ -142,3 +142,67 @@ def test_the_model_gets_the_section_prompt_and_the_trace_its_version(form, monke
     assert args[2] == "Section A: Session" and kwargs["langfuse_prompt"] is prompt
     assert kwargs["name"] == "tally-test-tally" and kwargs["metadata"] == {"prompt_version": 4, "section": "A"}  # fmt: skip
     assert result["reading"]["area"] is None  # the text "null" is an empty field
+
+
+def test_pages_say_which_sections_each_page_holds(form):
+    assert form.pages == (("A", "B"),)  # no "pages": one page with every section
+    assert parse_form({**FORM, "pages": ["A", ["b"]]}).pages == (("A",), ("B",))
+    with pytest.raises(ValueError, match="'C' is not in the form"):
+        parse_form({**FORM, "pages": ["AC"]})
+    with pytest.raises(ValueError, match="more than one page"):
+        parse_form({**FORM, "pages": ["AB", "B"]})
+
+
+def test_page_photos_are_scored_on_every_section_printed_on_them(tmp_path, monkeypatch):
+    from test_evaluation_bench import FakeLangfuse
+
+    import formbench.tally.bench as bench
+
+    form = parse_form({**FORM, "pages": ["A", "B"]})
+    folder = tmp_path / "samples"
+    folder.mkdir()
+    (folder / "sheet-01.json").write_text(json.dumps(SHEET))
+    for name in (
+        "sheet-01.jpg",
+        "sheet-01_p2.jpg",
+        "sheet-01_p3.jpg",
+        "sheet-01_A.jpg",
+        "other.jpg",
+    ):
+        (folder / name).touch()
+    items, skipped = bench.load_items(folder, form, pages=True)
+    assert [i["input"] for i in items] == [{"photo": "sheet-01.jpg", "page": 1, "sections": "A"},
+                                           {"photo": "sheet-01_p2.jpg", "page": 2, "sections": "B"}]  # fmt: skip
+    assert set(items[1]["expected_output"]) == {"screened_6_m_male", "screened_6_m_female", "officer_signature"}  # fmt: skip
+    assert sorted(skipped) == ["other.jpg (no other.json)", "sheet-01_p3.jpg (name it <sheet>.jpg or <sheet>_p<page>.jpg)"]  # fmt: skip
+    sections, skipped = bench.load_items(folder, form)  # page photos are not section photos
+    assert [i["input"]["photo"] for i in sections] == ["sheet-01_A.jpg"] and len(skipped) == 2
+
+    def perfect(photo, form, page, model, **_):
+        expected = next(i["expected_output"] for i in items if i["input"]["photo"] == photo.name)
+        letter = form.pages[page - 1][0]
+        reading = {f.id: None if expected[f.id] in (None, "") else str(expected[f.id]) for f in form.sections[letter].fields}  # fmt: skip
+        return {"readings": {letter: reading}, "json_valid": True, "errors": [], "raw": "{}"}
+
+    monkeypatch.setattr(bench, "read_page", perfect)
+    result = bench.run_tally(folder, form, "m", langfuse=FakeLangfuse(), configs={}, pages=True)
+    assert result["metrics"]["overall_accuracy"] == 1 and result["page_count"] == 2
+    assert result["counts"]["pages"] == 2 and result["metrics"]["processing_success_rate"] == 1
+    assert [(p["file"], p["section"]) for p in result["pages"]] == [("sheet-01.jpg", "A"), ("sheet-01_p2.jpg", "B")]  # fmt: skip
+
+
+def test_a_whole_page_is_one_call_split_into_its_sections(form, monkeypatch):
+    import formbench.vlm as vlm
+    from formbench.tally.form import DEFAULT_PAGE_PROMPT, read_page
+
+    calls = []
+    reply = '{"site_name": "CENTRAL", "area": "null", "screened_6_m_male": "7"}'
+    monkeypatch.setattr(vlm, "complete_json", lambda *a, **k: calls.append((a, k)) or reply)
+    result = read_page(None, form, 1, "m", max_side=100)
+    ((args, kwargs),) = calls
+    assert set(args[1]["properties"]) == {f.id for s in form.sections.values() for f in s.fields}
+    assert 'Section A, "Session":\n- week_starting' in args[2] and 'Section B, "Screening":' in args[2]  # fmt: skip
+    assert "{{" not in args[2] and "{{fields}}" in DEFAULT_PAGE_PROMPT
+    assert kwargs["name"] == "tally-test-tally-page" and "min_side" not in kwargs
+    assert result["readings"]["A"]["site_name"] == "CENTRAL" and result["readings"]["A"]["area"] is None  # fmt: skip
+    assert result["readings"]["B"] == {"screened_6_m_male": "7", "screened_6_m_female": None, "officer_signature": None}  # fmt: skip
