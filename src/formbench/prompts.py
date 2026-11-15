@@ -141,6 +141,41 @@ PAGE_PROMPT = (
     "- Output only the JSON object."
 )
 
+# A whole summary report page in one call. Variable: fields (every table on the page).
+SUMMARY_PAGE_PROMPT = (
+    "This is a photo of a monthly summary report form: a printed page of tables in which "
+    "monthly totals are written by hand. Each table has its heading, a label on the left of "
+    "each row, and column headings at the top; some headings span two columns, for example an "
+    "age group above Facility and Outreach/Mobile. Shaded (grey) cells are not used. Return one "
+    "JSON object with these keys, in page order:\n"
+    "{{fields}}\n"
+    "\n"
+    "How to find each value:\n"
+    "- Find the table by its heading, the row by its label on the left and the column by the "
+    "headings above it. Count the columns from the left of the row; never take a value from "
+    "the neighbouring column or from the row above or below.\n"
+    "- Values are written freehand in the cell, not in boxes. A number may lean, touch the cell "
+    "lines or run a little outside its cell; it belongs to the cell where most of it is.\n"
+    '- Notes printed beside the tables (for example "must be the sum of") are instructions, '
+    "not values.\n"
+    "\n"
+    "People write some characters differently. Read them carefully:\n"
+    "- A 7 may have a short bar across its middle. It is still 7, not 2 or 4.\n"
+    "- A 4 may be open at the top. It is still 4, not 9.\n"
+    "- A 3 may have a flat top. It is still 3, not 2.\n"
+    "- A 6 may look like a C or G with a small loop at the bottom. It is still 6, not 5 or 0.\n"
+    "- A 1 may have a small flag at the top. It is still 1, not 7.\n"
+    "\n"
+    "Rules:\n"
+    "- Copy every number and word exactly as written; do not add up, check or correct "
+    "anything, even where a printed note says values must add up.\n"
+    "- If a cell has writing in it, give your best reading. Use null only when the cell is "
+    "empty. A written 0 is 0.\n"
+    '- A signature in the signature space means "signed".\n'
+    "- Do not transcribe the reporting officer's name.\n"
+    "- Output only the JSON object."
+)
+
 TAG = "formbench"
 FIRST_VERSION_MESSAGE = "The prompt in code (formbench), first version"
 
