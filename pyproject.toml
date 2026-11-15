@@ -1,22 +1,18 @@
 [project]
 name = "formbench"
 version = "0.1.0"
-description = "Benchmark harness for extracting structured data from handwritten forms with vision-language models, with confidence flags for human review."
+description = "Measure how well a local vision-language model reads photos of handwritten paper forms."
 readme = "README.md"
 authors = [
     { name = "Davis", email = "davistibz@gmail.com" }
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.28.1",
     "jsonschema>=4.25.1",
     "langfuse==3.7.0",
     "openai==2.48.0",
-    "opencv-python-headless>=5.0.0.93",
     "pillow>=11.3.0",
-    "pypdfium2>=5.14.0",
     "python-dotenv>=1.2.1",
-    "pyyaml>=6.0.3",
     "rich>=15.0.0",
 ]
 
@@ -36,9 +32,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 
-
 [tool.ruff.lint]
-ignore = ["E501"]
 select = [
   "E", "F",   # errors and undefined names (ruff's defaults)
   "I",        # import sorting (I001)
@@ -47,5 +41,4 @@ select = [
 ]
 
 [tool.pytest.ini_options]
-# macOS system Python links LibreSSL; urllib3 warns about it on import. Not a test concern.
-filterwarnings = ["ignore:urllib3 v2 only supports OpenSSL"]
+testpaths = ["tests"]
