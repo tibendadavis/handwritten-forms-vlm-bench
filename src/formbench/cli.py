@@ -1,158 +1,205 @@
-"""The `formbench` command. Every subcommand and option is defined here.
-
-formbench eval      one photo, one model: reading, wrong cells, scores
-formbench bench     a folder of photos with their truth, one or more models
-formbench tally     a folder of tally sheet section photos with their truth, one or more models
-formbench compare   every model that ran on a folder, side by side
-formbench synth     make a synthetic handwritten scenario with known answers
-formbench template  build the blank-page template the synthetic pages are drawn on
-formbench metadata  download DHIS2 data set metadata (read-only)
-formbench run       weekly: read this week's photos into a draft for review
-formbench approve   weekly: approve a reviewed draft into a dataValueSet (never sent)
-"""
+"""The formbench commands: check, run, compare, breakdown, rescore and scores."""
 
 from __future__ import annotations
 
 import argparse
-import datetime as dt
+import json
+import sys
 from pathlib import Path
+from typing import Any
 
-DESCRIPTION = (
-    "Find the vision model that reads your handwritten form best: read photos with a local "
-    "model, score the readings against the truth, and track every run in Langfuse."
+from dotenv import find_dotenv, load_dotenv
+from rich.console import Console
+from rich.markup import escape
+
+from formbench.forms import load_form
+from formbench.forms.base import FormError, ReadOptions
+from formbench.model import DEFAULT_MAX_SIDE
+from formbench.report import (
+    breakdown_table,
+    check_table,
+    compare_tables,
+    score_table,
+    scores_table,
 )
-METADATA = Path("schemas/dataset/metadata.json")
-ENGINE_HELP = "ollama:<model-tag>, e.g. ollama:qwen3.5:4b"
-MAX_SIDE_HELP = (
-    "longest image side sent to the model in pixels (default 4032; smaller photos are sent as is)"
-)
-PROMPT_HELP = ("version of the register-page prompt in Langfuse: a number (3) or a label "
-               "(default: production)")  # fmt: skip
-TALLY_PROMPT_HELP = ("version of the form's tally prompt in Langfuse (with --pages, its page prompt): "
-                     "a number (3) or a label (default: production)")  # fmt: skip
+from formbench.runner import prepare, rescore, run_label, run_model
+
+RESULTS = Path("results")
+console = Console()
 
 
-def model_tag(engine: str) -> str:
-    kind, _, model = engine.partition(":")
-    if kind != "ollama" or not model:
-        raise SystemExit(f"--engine must be 'ollama:<model-tag>', got {engine!r}")
-    return model
+def say(message: str, style: str | None = None) -> None:
+    """Print a message as plain text: brackets in it are not markup."""
+    console.print(escape(message), style=style, highlight=False)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="formbench", description=DESCRIPTION)
-    sub = parser.add_subparsers(dest="command", required=True, metavar="<command>")
+def warn(message: str) -> None:
+    say(message, "yellow")
 
-    p = sub.add_parser("eval", help="test one photo with one model")
-    p.add_argument("--engine", required=True, help=ENGINE_HELP)
-    p.add_argument("--image", type=Path, help="a register page photo")
-    p.add_argument("--truth", type=Path,
-                   help="what is really written on --image (default: <image>.json next to it)")  # fmt: skip
-    p.add_argument("--scenario", type=Path, help="synthetic scenario folder (truth comes from it)")
-    p.add_argument("--photo", help="photo inside the scenario, e.g. week-01/page-2026-07-s1.jpg")
-    p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
-    p.add_argument("--prompt", help=PROMPT_HELP)
-    p.add_argument("--think", action="store_true", help="let thinking models think")
-    p.add_argument("--metadata", type=Path, default=METADATA)
-    p.add_argument("--out", type=Path, default=Path("results/register/eval"))
 
-    p = sub.add_parser("bench", help="score models on a folder of photos with their truth")
-    p.add_argument("--folder", "--scenario", dest="folder", type=Path, required=True,
-                   help="photos each with a <photo>.json truth next to it, or a synthetic "
-                        "scenario (truth.json)")  # fmt: skip
-    p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
-    p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
-    p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
-    p.add_argument("--prompt", help=PROMPT_HELP)
-    p.add_argument("--think", action="store_true", help="let thinking models think")
-    p.add_argument("--metadata", type=Path, default=METADATA)
-    p.add_argument("--out", type=Path, default=Path("results/register/bench"))
+def fail(message: str) -> int:
+    say(message, "red")
+    return 1
 
-    p = sub.add_parser(
-        "tally", help="score models on photos of tally sheet sections with their truth"
+
+def check(args: argparse.Namespace) -> int:
+    """Check a folder without a model or Langfuse: the form, every truth file, and the photos
+    a run would read. Exit code 1 when anything is wrong."""
+    form = load_form(args.folder, args.form)
+    say(f"Form: {form.name} ({form.kind}, id {form.id})")
+    errors = form.check_truths(args.folder)
+    for error in errors:
+        say(error, "red")
+    if errors:
+        return fail(f"{len(errors)} truth file(s) cannot be used.")
+    items, skipped = form.items(args.folder, args.pages)
+    console.print(check_table(items))
+    for photo in skipped:
+        warn(f"skipped: {photo}")
+    if not items:
+        return fail(f"No photo in {args.folder} has a truth file.")
+    return 0
+
+
+def run(args: argparse.Namespace) -> int:
+    """Benchmark each model on a folder, one Langfuse experiment per model."""
+    from langfuse import get_client
+
+    form = load_form(args.folder, args.form)
+    options = ReadOptions(think=args.think, max_side=args.max_side)
+    langfuse = get_client()
+    plan = prepare(
+        langfuse, args.folder, form, pages=args.pages, options=options, prompt_choice=args.prompt
     )
-    p.add_argument("--folder", type=Path, required=True,
-                   help="one photo per section, <sheet>_<section>.jpg, and a <sheet>.json truth per sheet")  # fmt: skip
-    p.add_argument("--pages", action="store_true",
-                   help="benchmark the whole-page photos instead, <sheet>.jpg (page 1) and <sheet>_p2.jpg, with the page prompt")  # fmt: skip
-    p.add_argument("--form", type=Path, help="the form description (default: form.json in the folder or above)")  # fmt: skip
-    p.add_argument("--engine", action="append", help=f"{ENGINE_HELP}; repeat for several")
-    p.add_argument("--rescore", type=Path, nargs="+", help="re-score saved run files, no model")
-    p.add_argument("--max-side", type=int, help=MAX_SIDE_HELP)
-    p.add_argument("--prompt", help=TALLY_PROMPT_HELP)
-    p.add_argument("--think", action="store_true", help="let thinking models think")
-    p.add_argument("--out", type=Path, default=Path("results/tally/bench"))
-
-    p = sub.add_parser("compare", help="every model that ran on a folder, side by side")
-    p.add_argument("runs", type=Path, nargs="*", help="saved runs (default: all in results/register/bench and results/tally/bench)")  # fmt: skip
-    p.add_argument("--folder", help="only runs on this folder (its name, e.g. my-photos)")
-
-    sub.add_parser("scores", help="what every score means")
-
-    p = sub.add_parser("synth", help="make a synthetic handwritten scenario")
-    p.add_argument("--name", help="scenario folder name (default seed-N)")
-    p.add_argument("--seed", type=int, default=1, help="same seed, same scenario")
-    p.add_argument("--weeks", type=int, default=3)
-    p.add_argument("--pages", type=int, default=3, help="cohort pages in the register")
-    p.add_argument("--messiness", choices=["mixed", "neat", "average", "bad", "terrible"], default="mixed")  # fmt: skip
-    p.add_argument("--quality", choices=["mixed", "scan", "good", "poor", "terrible"], default="mixed",
-                   help="photo quality")  # fmt: skip
-    p.add_argument("--paper", choices=["a3", "a4"], default="a3", help="physical register size")
-    p.add_argument("--go-live", type=dt.date.fromisoformat, default=dt.date(2026, 9, 7))
-    p.add_argument("--metadata", type=Path, default=METADATA)
-    p.add_argument("--out", type=Path, default=Path("data/private/synthetic"))
-
-    p = sub.add_parser("template", help="build the blank-page template from the blank register PDF")
-    p.add_argument("--pdf", type=Path, default=Path("data/private/samples/register.pdf"))
-    p.add_argument("--out", type=Path, default=Path("data/private/register"))
-
-    p = sub.add_parser("metadata", help="download DHIS2 data set metadata (read-only)")
-    p.add_argument("--dataset", required=True, help="DHIS2 data set UID")
-    p.add_argument("--out", type=Path, default=METADATA.parent)
-
-    p = sub.add_parser("run", help="weekly: read photos into a draft for review")
-    p.add_argument("--week", required=True, help="ISO week, e.g. 2026W44")
-    p.add_argument("--cover", type=Path, required=True, help="photo of the register cover")
-    p.add_argument("--pages", type=Path, nargs="+", required=True, help="cohort page photos")
-    p.add_argument("--engine", required=True, help=ENGINE_HELP)
-    p.add_argument("--think", action="store_true", help="let thinking models think")
-    p.add_argument("--metadata", type=Path, default=METADATA)
-    p.add_argument("--out", type=Path, default=Path("results/register"))
-
-    p = sub.add_parser("approve", help="weekly: approve a reviewed draft (never sent to DHIS2)")
-    p.add_argument("--run", type=Path, required=True, help="the run folder from `formbench run`")
-    p.add_argument("--reviewer", required=True, help="your name")
-    p.add_argument("--metadata", type=Path, default=METADATA)
-    return parser
+    say(form.name)
+    say(f"Prompt: {plan.prompt_name} v{plan.version}")
+    columns = []
+    for model in args.model:
+        say(f"Running {model} on {args.folder.name}...")
+        record = run_model(plan, model, langfuse, args.out)
+        if record["failed"]:
+            warn(f"{len(record['failed'])} photo(s) failed: {', '.join(record['failed'])}")
+        if record["skipped"]:
+            warn(f"{len(record['skipped'])} photo(s) skipped: {', '.join(record['skipped'])}")
+        for empty in record["empty_readings"]:
+            parts = ", ".join(str(p) for p in empty["parts"])
+            warn(f"empty reading: {empty['file']} ({parts}) came back blank; the truth has values")
+        if record["dataset_run_url"]:
+            say(f"Langfuse: {record['dataset_run_url']}")
+        say(f"Saved to {record['path']}")
+        columns.append((run_label(record["settings"]), record["metrics"]))
+    console.print(score_table(f"{args.folder.name}: this run", columns))
+    say(f"All runs on this folder side by side: formbench compare --folder {args.folder.name}")
+    return 0
 
 
-def main(argv: list[str] | None = None) -> None:
-    from dotenv import find_dotenv, load_dotenv
+def load_runs(paths: list[Path]) -> list[dict[str, Any]]:
+    """Saved runs; files that are not run results are passed over with a note."""
+    runs = []
+    for path in paths:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and {"settings", "counts"} <= set(data):
+            runs.append(data)
+        else:
+            warn(f"not a formbench run, left out: {path}")
+    return runs
 
-    args = build_parser().parse_args(argv)
+
+def compare(args: argparse.Namespace) -> int:
+    """One table per folder with every run on it; runs with the same label are pooled."""
+    runs = load_runs(args.runs or sorted(RESULTS.glob("*.json")))
+    if args.folder:
+        runs = [r for r in runs if r["settings"]["folder"] == args.folder]
+    if not runs:
+        return fail("No saved runs to compare (formbench run saves them).")
+    for table in compare_tables(runs):
+        console.print(table)
+    return 0
+
+
+def breakdown(args: argparse.Namespace) -> int:
+    runs = load_runs([args.run])
+    if not runs:
+        return 1
+    console.print(breakdown_table(runs[0], args.by))
+    return 0
+
+
+def rescore_runs(args: argparse.Namespace) -> int:
+    """Re-score saved runs from their photos and the current truth files."""
+    form = load_form(args.folder, args.form)
+    columns = []
+    for path in args.runs:
+        run_record = rescore(path, args.folder, form)
+        columns.append((run_label(run_record["settings"]), run_record["metrics"]))
+        say(f"Re-scored {path}")
+    console.print(score_table(f"Re-scored: {args.folder.name}", columns))
+    return 0
+
+
+def scores(args: argparse.Namespace) -> int:
+    console.print(scores_table())
+    return 0
+
+
+def parser() -> argparse.ArgumentParser:
+    top = argparse.ArgumentParser(
+        prog="formbench", description="Measure how well a local VLM reads photos of forms."
+    )
+    commands = top.add_subparsers(dest="command", required=True)
+
+    def folder_options(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--folder", type=Path, required=True, help="the photo folder")
+        p.add_argument("--form", type=Path, help="form.json (default: in the folder or above)")
+
+    p = commands.add_parser("check", help="check a folder's form, truth files and photo names")
+    folder_options(p)
+    p.add_argument("--pages", action="store_true", help="whole-page photos (cv-form)")
+    p.set_defaults(handler=check)
+
+    p = commands.add_parser("run", help="benchmark models on a folder (needs Ollama, Langfuse)")
+    folder_options(p)
+    p.add_argument("--model", action="append", required=True, help="an Ollama model tag")
+    p.add_argument("--pages", action="store_true", help="whole-page photos (cv-form)")
+    p.add_argument("--prompt", help="Langfuse prompt version number or label (production)")
+    p.add_argument("--think", action="store_true", help="let the model think first")
+    p.add_argument("--max-side", type=int, default=DEFAULT_MAX_SIDE, help="longest photo side")
+    p.add_argument("--out", type=Path, default=RESULTS, help="where results files go")
+    p.set_defaults(handler=run)
+
+    p = commands.add_parser("compare", help="compare saved runs, one table per folder")
+    p.add_argument("runs", nargs="*", type=Path, help="run files (default: results/*.json)")
+    p.add_argument("--folder", help="only runs on this folder (its name)")
+    p.set_defaults(handler=compare)
+
+    p = commands.add_parser("breakdown", help="accuracy of one run by group or field type")
+    p.add_argument("run", type=Path)
+    p.add_argument("--by", choices=("group", "type"), default="group")
+    p.set_defaults(handler=breakdown)
+
+    p = commands.add_parser("rescore", help="re-score saved runs from the current truth files")
+    p.add_argument("runs", nargs="+", type=Path)
+    folder_options(p)
+    p.set_defaults(handler=rescore_runs)
+
+    p = commands.add_parser("scores", help="what every score means")
+    p.set_defaults(handler=scores)
+    return top
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Entry point of the formbench console script."""
     load_dotenv(find_dotenv(usecwd=True))
-    if args.command == "eval":
-        from formbench.evaluation.photo import command
-    elif args.command == "bench":
-        from formbench.evaluation.bench import command
-    elif args.command == "tally":
-        from formbench.tally.bench import command
-    elif args.command == "compare":
-        from formbench.evaluation.bench import compare as command
-    elif args.command == "scores":
-        from formbench.evaluation.bench import explain as command
-    elif args.command == "synth":
-        from formbench.synthetic.simulate import command
-    elif args.command == "template":
-        from formbench.synthetic.template import command
-    elif args.command == "metadata":
-        from formbench.dhis2 import command
-    elif args.command == "run":
-        from formbench.weekly.draft import command
-    else:
-        from formbench.weekly.approve import command
-    command(args)
+    args = parser().parse_args(argv)
+    try:
+        return args.handler(args)
+    except FormError as error:
+        return fail(str(error))
+    except SystemExit as stop:
+        if isinstance(stop.code, str):  # a run or prompt that cannot go on, with why
+            return fail(stop.code)
+        raise
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
