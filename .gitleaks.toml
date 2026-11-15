@@ -1,8 +1,9 @@
 # Keep every default rule; form descriptions list field names ("key": "Deworming_6-11 m"),
-# which the generic API-key rule mistakes for secrets.
+# which the generic API-key rule mistakes for secrets. [allowlist] works on gitleaks 8.24 (CI)
+# and later.
 [extend]
 useDefault = true
 
-[[allowlists]]
+[allowlist]
 description = "Form description fixtures: field names, not secrets"
 paths = ['''tests/fixtures/.+/form\.json''']
