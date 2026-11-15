@@ -1,0 +1,10 @@
+{
+  "cohort_month": "June",
+  "cohort_year": "2026",
+  "rows": [
+    {"serial": "1", "card_number": "0101", "sex": "F", "birth_date": "01-06-26", "age": "2/52",
+     "bcg": "02-06-26", "opv0": "02-06-26"},
+    {"serial": "2", "card_number": "0102", "sex": "M", "birth_date": "03-06-26", "age": "1/52",
+     "bcg": "04-06-26"}
+  ]
+}
