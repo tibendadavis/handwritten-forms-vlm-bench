@@ -24,7 +24,7 @@ def oracle_decisions(draft: dict[str, Any], pages: list[dict[str, Any]], photos:
                      week_truth: dict[str, Any], intended_option: str) -> dict[str, Any]:  # fmt: skip
     """Resolve every open blocking flag the way a reviewer with the truth would."""
     decisions: dict[str, Any] = {"pages": {}, "resolved": {}}
-    by_page = {p["page_id"]: (p, photo) for p, photo in zip(pages, photos)}
+    by_page = {p["page_id"]: (p, photo) for p, photo in zip(pages, photos, strict=False)}
     for flag in draft["flags"]:
         if not flag["blocking"] or flag["resolved"]:
             continue
@@ -133,7 +133,7 @@ def review_counts(flags: list[dict[str, Any]], pages: list[dict[str, Any]], phot
     reviewer, so it covers every cell of that row; a cell flag covers its cell.
     """
     misread: set[tuple[str, str, str]] = set()
-    for page, photo in zip(pages, photos):
+    for page, photo in zip(pages, photos, strict=False):
         truth = {r["serial"]: r for r in photo["reading"]["rows"]}
         for row in page["rows"]:
             serial = str(row.get("serial") or "")

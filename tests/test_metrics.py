@@ -28,7 +28,7 @@ def test_hungarian_is_optimal_on_random_matrices():
         pairs = hungarian(cost)
         assert len(pairs) == min(n, m)
         best = min(
-            sum(cost[i][j] for i, j in zip(rows, cols))
+            sum(cost[i][j] for i, j in zip(rows, cols, strict=False))
             for rows in itertools.permutations(range(n), min(n, m))
             for cols in itertools.permutations(range(m), min(n, m))
         )

@@ -41,7 +41,7 @@ def test_doses_follow_the_schedule(sim):
             days = [child.doses[c] for cols in order for c in cols if c in child.doses]
             assert days == sorted(days)
             assert all(d >= child.birth for d in days)
-            for (_, a), (_, b) in zip(VISITS, VISITS[1:]):
+            for (_, a), (_, b) in zip(VISITS, VISITS[1:], strict=False):
                 if a[0] in child.doses and b[0] in child.doses:
                     assert (child.doses[b[0]] - child.doses[a[0]]).days >= 28
             assert all(child.written[c] >= child.doses[c] for c in child.doses)
