@@ -1,8 +1,6 @@
 import datetime as dt
 
 import pytest
-from conftest import coc_uid
-from test_register_aggregate import page, row
 
 from formbench.register.spec import load_spec
 from formbench.weekly.state import (
@@ -12,6 +10,8 @@ from formbench.weekly.state import (
     discrepancies,
     page_identity,
 )
+from tests.conftest import coc_uid
+from tests.test_register_aggregate import page, row
 
 GO_LIVE, TODAY = dt.date(2025, 6, 2), dt.date(2025, 6, 27)
 OPV1_F = coc_uid("Dose 1, 0-5 months, Female")

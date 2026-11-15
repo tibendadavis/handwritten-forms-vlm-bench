@@ -1,7 +1,7 @@
 import pytest
-from conftest import coc_uid
 
 from formbench.register.spec import DOSE_COLUMNS, Disaggregation, load_spec, parse_coc
+from tests.conftest import coc_uid
 
 
 @pytest.mark.parametrize(

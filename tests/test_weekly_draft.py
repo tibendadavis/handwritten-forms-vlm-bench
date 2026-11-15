@@ -1,12 +1,12 @@
 import datetime as dt
 
 import pytest
-from test_register_aggregate import page, row
 
 from formbench.register.spec import load_spec
 from formbench.weekly.draft import compute_draft, names, resolve_org_unit
 from formbench.weekly.review import write_review
 from formbench.weekly.state import RegisterState
+from tests.test_register_aggregate import page, row
 
 COVER = {"facility_name": "Amani HC", "mfl_code": "MFL-1", "facility_type": "Fixed/Facility"}
 GO_LIVE, TODAY = dt.date(2025, 6, 2), dt.date(2025, 6, 27)
