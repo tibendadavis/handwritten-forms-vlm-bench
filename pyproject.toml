@@ -1,0 +1,44 @@
+[project]
+name = "formbench"
+version = "0.2.0"
+description = "Measure how well a local vision-language model reads photos of handwritten paper forms."
+readme = "README.md"
+authors = [
+    { name = "Davis", email = "davistibz@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "jsonschema>=4.25.1",
+    "langfuse==3.7.0",
+    "openai==2.48.0",
+    "pillow>=11.3.0",
+    "python-dotenv>=1.2.1",
+    "rich>=15.0.0",
+]
+
+[project.scripts]
+formbench = "formbench.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+  "E", "F",   # errors and undefined names (ruff's defaults)
+  "I",        # import sorting (I001)
+  "SIM",      # simplifications (SIM115)
+  "B",        # likely bugs, e.g. mutable default arguments
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

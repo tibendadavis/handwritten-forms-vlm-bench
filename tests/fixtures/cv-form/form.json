@@ -1,0 +1,17 @@
+{
+  "id": "weekly-tally",
+  "name": "Weekly tally sheet",
+  "sections": {
+    "A": {"title": "Session details",
+          "fields": [{"key": "Week starting", "type": "date"},
+                     {"key": "Region", "type": "choice", "options": ["North", "South"]},
+                     {"key": "Facility", "type": "text"},
+                     {"key": "Facility code", "type": "digits"}]},
+    "B": {"title": "Screening",
+          "fields": [{"key": "Screened_6-11 m_Male"},
+                     {"key": "Screened_6-11 m_Female", "type": "count"}]},
+    "C": {"title": "Sign-off",
+          "fields": [{"key": "Supervisor signature", "type": "mark"}]}
+  },
+  "pages": [["A", "B"], "C"]
+}
