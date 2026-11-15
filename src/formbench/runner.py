@@ -44,6 +44,8 @@ def model_slug(model: str) -> str:
 def mode_of(form: FormKind, pages: bool) -> str:
     if form.kind == "register":
         return "register"
+    if form.kind == "summary":
+        return "summary"
     return "pages" if pages else "sections"
 
 

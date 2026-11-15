@@ -8,8 +8,9 @@ from typing import Any
 from formbench.forms.base import FormError, FormKind, read_json_file
 from formbench.forms.cv_form import parse_cv_form
 from formbench.forms.register import parse_register
+from formbench.forms.summary import parse_summary
 
-KINDS = ("register", "cv-form")
+KINDS = ("register", "cv-form", "summary")
 
 
 def find_form(folder: Path, explicit: Path | None = None) -> Path:
@@ -23,7 +24,7 @@ def find_form(folder: Path, explicit: Path | None = None) -> Path:
 
 
 def kind_of(data: dict[str, Any]) -> str:
-    """The kind named in form.json, or the one its shape says: columns or sections."""
+    """The kind named in form.json, or the one its shape says: columns, sections or fields."""
     if "kind" in data:
         if data["kind"] not in KINDS:
             raise FormError(f"kind {data['kind']!r} is not one of {KINDS}")
@@ -32,15 +33,19 @@ def kind_of(data: dict[str, Any]) -> str:
         return "register"
     if "sections" in data:
         return "cv-form"
-    raise FormError('a form has "columns" (a register) or "sections" (a cv-form)')
+    if "fields" in data:
+        return "summary"
+    raise FormError(
+        'a form has "columns" (a register), "sections" (a cv-form) or "fields" (a summary)'
+    )
 
 
 def parse_form(data: Any) -> FormKind:
     """A form from the content of its form.json."""
     if not isinstance(data, dict):
         raise FormError("a form description is a JSON object")
-    kind = kind_of(data)
-    return parse_register(data) if kind == "register" else parse_cv_form(data)
+    parsers = {"register": parse_register, "cv-form": parse_cv_form, "summary": parse_summary}
+    return parsers[kind_of(data)](data)
 
 
 def load_form(folder: Path, explicit: Path | None = None) -> FormKind:
