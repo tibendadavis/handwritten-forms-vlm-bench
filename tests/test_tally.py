@@ -100,9 +100,8 @@ def test_section_scores_use_the_register_counts(form, tmp_path):
 
 
 def test_a_folder_run_scores_each_photo_on_its_own_section(form, tmp_path, monkeypatch):
-    from test_evaluation_bench import FakeLangfuse
-
     import formbench.tally.bench as bench
+    from tests.test_evaluation_bench import FakeLangfuse
 
     folder = tmp_path / "samples"
     folder.mkdir()
@@ -154,9 +153,8 @@ def test_pages_say_which_sections_each_page_holds(form):
 
 
 def test_page_photos_are_scored_on_every_section_printed_on_them(tmp_path, monkeypatch):
-    from test_evaluation_bench import FakeLangfuse
-
     import formbench.tally.bench as bench
+    from tests.test_evaluation_bench import FakeLangfuse
 
     form = parse_form({**FORM, "pages": ["A", "B"]})
     folder = tmp_path / "samples"

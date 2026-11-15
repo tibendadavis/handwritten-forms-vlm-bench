@@ -1,7 +1,6 @@
 import datetime as dt
 
 import pytest
-from conftest import coc_uid
 
 from formbench.register.aggregate import (
     aggregate,
@@ -13,6 +12,7 @@ from formbench.register.aggregate import (
     select_days,
 )
 from formbench.register.spec import DOSE_COLUMNS, load_spec
+from tests.conftest import coc_uid
 
 GO_LIVE = dt.date(2025, 6, 2)
 TODAY = dt.date(2025, 6, 20)
