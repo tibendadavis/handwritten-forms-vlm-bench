@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-11-15
 
 ### Changed
 - formbench now only measures how well a local vision model reads handwritten forms, with six

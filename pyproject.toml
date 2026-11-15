@@ -1,6 +1,6 @@
 [project]
 name = "formbench"
-version = "0.1.0"
+version = "0.2.0"
 description = "Measure how well a local vision-language model reads photos of handwritten paper forms."
 readme = "README.md"
 authors = [
