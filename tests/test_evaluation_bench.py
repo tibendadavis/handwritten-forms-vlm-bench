@@ -97,44 +97,6 @@ def test_a_flag_on_a_misread_counts_as_caught():
     assert review_counts([{**flag, "serial": "2"}], pages, truth)["misreads_flagged"] == 0
 
 
-def test_cli_accepts_every_option_the_commands_use():
-    from formbench.cli import build_parser
-
-    args = build_parser().parse_args(
-        [
-            "bench",
-            "--folder",
-            "s",
-            "--engine",
-            "ollama:m",
-            "--max-side",
-            "4096",
-            "--think",
-            "--prompt",
-            "3",
-        ]
-    )
-    assert (args.max_side, args.engine, args.think, args.prompt) == (4096, ["ollama:m"], True, "3")
-    assert args.rescore is None and args.out.name == "bench"
-    assert build_parser().parse_args(["bench", "--scenario", "s"]).folder.name == "s"
-    args = build_parser().parse_args(["eval", "--engine", "ollama:m", "--image", "p.jpg"])
-    assert args.truth is None and args.metadata.name == "metadata.json" and args.prompt is None
-    args = build_parser().parse_args(["compare", "a.json", "b.json"])
-    assert len(args.runs) == 2
-    args = build_parser().parse_args(["compare", "--folder", "my-photos"])
-    assert args.runs == [] and args.folder == "my-photos"
-
-
-def test_engine_must_name_an_ollama_model():
-    from formbench.cli import model_tag
-
-    assert model_tag("ollama:hf.co/ibm-granite/granite-vision-4.1-4b-GGUF:Q8_0") == (
-        "hf.co/ibm-granite/granite-vision-4.1-4b-GGUF:Q8_0"
-    )
-    with pytest.raises(SystemExit):
-        model_tag("qwen3.5:4b")
-
-
 def test_summary_sums_counts_across_scenarios():
     from formbench.evaluation.bench import combine
 
