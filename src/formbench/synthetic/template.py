@@ -45,19 +45,21 @@ def detect_grid(gray: np.ndarray) -> dict[str, Any]:
     full = [y for y, length in _lines(h, 1, 200) if length > 0.9 * table_w]
     short = [y for y, length in _lines(h, 1, 200) if length <= 0.9 * table_w]
     # Letter row = the two full lines closest together; child rows start below it.
-    gaps = [b - a for a, b in zip(full, full[1:])]
+    gaps = [b - a for a, b in zip(full, full[1:], strict=False)]
     letters_top = full[gaps.index(min(gaps))]
     body = [y for y in full if y > letters_top]
     if len(body) != ROWS + 1:
         raise TemplateError(f"Expected {ROWS} child rows, found {len(body) - 1}")
 
     rows = []
-    for top, bottom in zip(body, body[1:]):
+    for top, bottom in zip(body, body[1:], strict=False):
         inside = [y for y in short if top + 10 < y < bottom - 10]
         rows.append(
             {"y0": top, "y1": bottom, "split": inside[0] if inside else (top + bottom) // 2}
         )
-    columns = {letter: [x0, x1] for letter, x0, x1 in zip(LETTERS, verticals, verticals[1:])}
+    columns = {
+        letter: [x0, x1] for letter, x0, x1 in zip(LETTERS, verticals, verticals[1:], strict=False)
+    }
     return {
         "columns": columns,
         "rows": rows,

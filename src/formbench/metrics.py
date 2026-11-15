@@ -43,7 +43,7 @@ def hungarian(cost: list[list[float]]) -> list[tuple[int, int]]:
     if not cost or not cost[0]:
         return []
     transposed = len(cost) > len(cost[0])
-    matrix = [list(r) for r in zip(*cost)] if transposed else [list(r) for r in cost]
+    matrix = [list(r) for r in zip(*cost, strict=False)] if transposed else [list(r) for r in cost]
     n, m = len(matrix), len(matrix[0])
     inf = float("inf")
     u, v = [0.0] * (n + 1), [0.0] * (m + 1)

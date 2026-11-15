@@ -146,9 +146,9 @@ def score_run(weeks_out: list[dict[str, Any]], truth: dict[str, Any], ds: dict[s
     without a model."""
     spec = load_spec(ds)
     counts = []
-    for week, out in zip(truth["weeks"], weeks_out):
+    for week, out in zip(truth["weeks"], weeks_out, strict=False):
         pages = [{"page_id": r["page_id"], **r["reading"]} for r in out["pages"]]
-        for reading, photo in zip(out["pages"], week["photos"]):
+        for reading, photo in zip(out["pages"], week["photos"], strict=False):
             counts.append(score_page(reading["reading"], photo["reading"], reading["json_valid"], spec))  # fmt: skip
         counts.append(review_counts(out["first_flags"], pages, week["photos"]))
         counts.append(compare_values(_values(out["approved_values"] + out["approved_corrections"]),
