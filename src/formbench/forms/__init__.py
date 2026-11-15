@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from formbench.forms.base import FormError, FormKind, read_json_file
+from formbench.forms.cv_form import parse_cv_form
 from formbench.forms.register import parse_register
 
-KINDS = ("register",)
+KINDS = ("register", "cv-form")
 
 
 def find_form(folder: Path, explicit: Path | None = None) -> Path:
@@ -22,22 +23,24 @@ def find_form(folder: Path, explicit: Path | None = None) -> Path:
 
 
 def kind_of(data: dict[str, Any]) -> str:
-    """The kind named in form.json, or the one its shape says (columns)."""
+    """The kind named in form.json, or the one its shape says: columns or sections."""
     if "kind" in data:
         if data["kind"] not in KINDS:
             raise FormError(f"kind {data['kind']!r} is not one of {KINDS}")
         return data["kind"]
     if "columns" in data:
         return "register"
-    raise FormError('a form has "columns" (a register)')
+    if "sections" in data:
+        return "cv-form"
+    raise FormError('a form has "columns" (a register) or "sections" (a cv-form)')
 
 
 def parse_form(data: Any) -> FormKind:
     """A form from the content of its form.json."""
     if not isinstance(data, dict):
         raise FormError("a form description is a JSON object")
-    kind_of(data)
-    return parse_register(data)
+    kind = kind_of(data)
+    return parse_register(data) if kind == "register" else parse_cv_form(data)
 
 
 def load_form(folder: Path, explicit: Path | None = None) -> FormKind:
